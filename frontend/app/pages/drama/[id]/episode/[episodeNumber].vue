@@ -84,7 +84,7 @@
       <div class="sidebar-bottom">
         <div class="progress-wrap">
           <div class="progress-head">
-            <span class="progress-label">制作进度</span>
+            <span class="progress-label">{{ lt('制作进度', 'Production progress') }}</span>
             <span class="progress-val">{{ pipelineProgress }}/11</span>
           </div>
           <div class="progress-track">
@@ -2609,6 +2609,7 @@ function goSubStep(key) {
 }
 
 const pipelineProgress = computed(() => {
+  if (mergeUrl.value) return 11
   let p = 0
   if (rawContent.value) p++
   if (scriptContent.value) p++
