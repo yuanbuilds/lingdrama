@@ -1,5 +1,5 @@
 # ── Stage 1: Build frontend ──────────────────────────────────
-FROM node:20-slim AS frontend-build
+FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -8,11 +8,9 @@ COPY frontend/ ./
 RUN npm run generate
 
 # ── Stage 2: Build backend native modules ────────────────────
-FROM node:20-slim AS backend-build
+FROM node:20-alpine AS backend-build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
@@ -21,11 +19,10 @@ COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 
 # ── Stage 3: Production image (lean) ────────────────────────
-FROM node:20-slim
+FROM node:20-alpine
 
 # ffmpeg (runtime) + tsx (runs TS directly)
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/* \
+RUN apk add --no-cache ffmpeg libstdc++ \
     && npm i -g tsx
 
 WORKDIR /app
