@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+frontend/dist
 
 # IDE
 .idea/
@@ -29,6 +30,9 @@ data/drama_generator.db-shm
 data/huobao_drama.db
 data/huobao_drama.db-wal
 data/huobao_drama.db-shm
+data/lingdrama.db
+data/lingdrama.db-wal
+data/lingdrama.db-shm
 data/public.sql
 data/*.bak*
 data/static/
@@ -41,5 +45,6 @@ configs/config.yaml
 tmp/
 temp/
 .superpowers/
+.playwright-cli/
 /CLAUDE.md
 /AGENTS.md

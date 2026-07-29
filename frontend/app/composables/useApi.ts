@@ -1,3 +1,5 @@
+import { getLingLocale, translateText } from '~/utils/lingI18n'
+
 const BASE = '/api/v1'
 
 async function req<T = any>(method: string, path: string, body?: any): Promise<T> {
@@ -14,7 +16,7 @@ async function req<T = any>(method: string, path: string, body?: any): Promise<T
 
     if (!resp.ok || (json.code && json.code >= 400)) {
       console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', json.message || '')
-      throw new Error(json.message || `${resp.status}`)
+      throw new Error(translateText(json.message || `${resp.status}`, getLingLocale()))
     }
 
     console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#66bb6a', 'color:#66bb6a;font-weight:bold', 'color:#888')
@@ -104,7 +106,6 @@ export const aiConfigAPI = {
   update: (id: number, d: any) => api.put(`/ai-configs/${id}`, d),
   del: (id: number) => api.del(`/ai-configs/${id}`),
   test: (d: any) => api.post('/ai-configs/test', d),
-  huobaoPreset: (apiKey: string) => api.post('/ai-configs/huobao-preset', { api_key: apiKey }),
 }
 
 export const agentConfigAPI = {

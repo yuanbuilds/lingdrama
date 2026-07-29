@@ -51,6 +51,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronDown, Search } from 'lucide-vue-next'
+import { getLingLocale, translateText } from '~/utils/lingI18n'
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -69,14 +70,16 @@ const optionsEl = ref()
 const highlightedIdx = ref(-1)
 const dropdownStyle = ref({})
 
+const displayLabel = value => translateText(String(value ?? ''), getLingLocale())
+
 // Normalize options: support both flat list and grouped format
 const normalizedGroups = computed(() => {
   if (!props.options.length) return []
   // Check if already grouped
   if (props.options[0]?.options) {
     return props.options.map(g => ({
-      label: g.label || '',
-      options: g.options.map(o => ({ label: o.label ?? o, value: o.value ?? o })),
+      label: displayLabel(g.label || ''),
+      options: g.options.map(o => ({ label: displayLabel(o.label ?? o), value: o.value ?? o })),
     }))
   }
   // Flat list with optional group property
@@ -84,9 +87,9 @@ const normalizedGroups = computed(() => {
   for (const o of props.options) {
     const label = o.group || ''
     if (!map.has(label)) map.set(label, [])
-    map.get(label).push({ label: o.label ?? o, value: o.value ?? o })
+    map.get(label).push({ label: displayLabel(o.label ?? o), value: o.value ?? o })
   }
-  return Array.from(map.entries()).map(([label, options]) => ({ label, options }))
+  return Array.from(map.entries()).map(([label, options]) => ({ label: displayLabel(label), options }))
 })
 
 // Filter by search query

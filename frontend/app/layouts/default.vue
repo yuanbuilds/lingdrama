@@ -5,12 +5,12 @@
       <div class="header-left">
         <button class="brand" @click="navigateTo('/')">
           <div class="brand-mark">
-            <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="brand-logo" @error="showBrandImage = false" />
-            <span v-else class="brand-fallback">火</span>
+            <img v-if="showBrandImage" :src="brandLogo" alt="灵动 LingDrama" class="brand-logo" @error="showBrandImage = false" />
+            <span v-else class="brand-fallback">灵</span>
           </div>
           <div class="brand-text">
-            <span class="brand-name">火宝短剧</span>
-            <span class="brand-sub">Huobao Shorts</span>
+            <span class="brand-name">灵动</span>
+            <span class="brand-sub">LingDrama</span>
           </div>
         </button>
       </div>
@@ -33,11 +33,11 @@
       </nav>
 
       <div class="header-right">
-        <div class="film-strip">
-          <span class="film-frame"></span>
-          <span class="film-frame"></span>
-          <span class="film-frame"></span>
-        </div>
+        <button class="locale-switch" type="button" :title="localeTitle" @click="toggleLocale">
+          <span :class="{ active: locale === 'zh-CN' }">中</span>
+          <span class="locale-divider">/</span>
+          <span :class="{ active: locale === 'en-US' }">EN</span>
+        </button>
       </div>
     </header>
 
@@ -48,10 +48,12 @@
 </template>
 
 <script setup>
-import brandLogo from '~/assets/huobao-logo.png'
+import brandLogo from '~/assets/lingdrama-logo.svg'
+import { useLingLocale } from '~/composables/useLingLocale'
 
 const route = useRoute()
 const showBrandImage = ref(true)
+const { locale, localeTitle, toggleLocale } = useLingLocale()
 </script>
 
 <style scoped>
@@ -135,6 +137,18 @@ const showBrandImage = ref(true)
 }
 
 .header-right { display: flex; align-items: center; margin-left: auto; }
+
+.locale-switch {
+  display: flex; align-items: center; gap: 5px;
+  min-height: 30px; padding: 5px 10px;
+  background: var(--bg-2); color: var(--text-3);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s var(--ease-out);
+}
+.locale-switch:hover { color: var(--text-1); border-color: var(--border-strong); }
+.locale-switch .active { color: var(--accent-text); }
+.locale-divider { opacity: 0.45; }
 
 /* Film strip decoration */
 .film-strip {

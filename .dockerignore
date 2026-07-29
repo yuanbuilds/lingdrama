@@ -7,6 +7,7 @@ dist
 *.log
 data/drama_generator.db*
 data/huobao_drama.db*
+data/lingdrama.db*
 data/static
 data/storage
 data/*.bak*
@@ -18,3 +19,4 @@ tmp
 temp
 .superpowers
 .claude
+.playwright-cli

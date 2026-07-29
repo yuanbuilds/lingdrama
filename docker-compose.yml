@@ -1,12 +1,15 @@
 services:
-  huobao-drama:
+  lingdrama:
+    image: lingdrama:local
+    container_name: lingdrama
     build: .
     ports:
       - "5679:5679"
     volumes:
       - ./data:/app/data
-      - ./configs/config.yaml:/app/configs/config.yaml
     environment:
       - NODE_ENV=production
       - PORT=5679
+      - DB_PATH=/app/data/lingdrama.db
+      - STORAGE_PATH=/app/data/static
     restart: unless-stopped
