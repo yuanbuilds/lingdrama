@@ -51,10 +51,11 @@
           <div class="task-main">
             <div class="task-title-line">
               <h3>{{ task.title }}</h3>
-              <span :class="['status-pill', task.state]"><i></i>{{ stateLabel(task.state) }}</span>
+              <span :class="['status-pill', task.state]"><i></i>{{ stateLabel(task) }}</span>
             </div>
             <p>{{ task.project || copy('未关联项目', 'Unassigned project') }}</p>
-            <div v-if="task.error" class="task-error">{{ copy('本次生成未完成，可在制作页重新提交。', 'This generation did not complete. Retry it from the production workspace.') }}</div>
+            <div v-if="task.recovered" class="task-recovered">{{ copy('首次生成未完成，已通过重试成功交付。', 'The first attempt did not complete; a retry was delivered successfully.') }}</div>
+            <div v-else-if="task.error" class="task-error">{{ copy('本次生成未完成，可在制作页重新提交。', 'This generation did not complete. Retry it from the production workspace.') }}</div>
           </div>
           <div class="task-provider">
             <small>{{ copy('执行引擎', 'Engine') }}</small>
@@ -111,6 +112,7 @@ function normalizeState(status) {
 const tasks = computed(() => {
   const normalize = (row, kind) => {
     const dramaId = Number(valueOf(row, 'drama_id', 'dramaId')) || null
+    const storyboardId = Number(valueOf(row, 'storyboard_id', 'storyboardId')) || null
     const completedAt = valueOf(row, 'completed_at', 'completedAt')
     const updatedAt = completedAt || valueOf(row, 'updated_at', 'updatedAt') || valueOf(row, 'created_at', 'createdAt')
     const url = kind === 'video'
@@ -121,6 +123,7 @@ const tasks = computed(() => {
       kind,
       title: kind === 'video' ? `${copy('视频生成任务', 'Video generation')} #${row.id}` : `${copy('图像生成任务', 'Image generation')} #${row.id}`,
       dramaId,
+      storyboardId,
       project: projectMap.value.get(dramaId),
       state: normalizeState(row.status),
       status: row.status,
@@ -131,7 +134,22 @@ const tasks = computed(() => {
       url,
     }
   }
-  return [...images.value.map(row => normalize(row, 'image')), ...videos.value.map(row => normalize(row, 'video'))]
+  const normalized = [...images.value.map(row => normalize(row, 'image')), ...videos.value.map(row => normalize(row, 'video'))]
+  for (const task of normalized) {
+    if (task.state !== 'failed' || !task.storyboardId) continue
+    const recovered = normalized.some(candidate =>
+      candidate.kind === task.kind
+      && candidate.dramaId === task.dramaId
+      && candidate.storyboardId === task.storyboardId
+      && candidate.state === 'completed'
+      && new Date(candidate.updatedAt || 0).getTime() > new Date(task.updatedAt || 0).getTime()
+    )
+    if (recovered) {
+      task.state = 'completed'
+      task.recovered = true
+    }
+  }
+  return normalized
     .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
 })
 
@@ -154,8 +172,9 @@ const filteredTasks = computed(() => {
   })
 })
 
-function stateLabel(state) {
-  return state === 'completed' ? copy('已完成', 'Completed') : state === 'failed' ? copy('需要处理', 'Needs attention') : copy('进行中', 'Active')
+function stateLabel(task) {
+  if (task.recovered) return copy('已恢复', 'Recovered')
+  return task.state === 'completed' ? copy('已完成', 'Completed') : task.state === 'failed' ? copy('需要处理', 'Needs attention') : copy('进行中', 'Active')
 }
 
 function durationLabel(task) {
@@ -237,7 +256,8 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
 .task-kind.video { background: var(--accent-bg); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 25%, var(--border)); }
 .task-title-line { display: flex; align-items: center; gap: 9px; }.task-title-line h3 { font: 650 12px var(--font-body); }
 .task-main > p { margin: 5px 0 0; color: var(--text-3); font-size: 10px; }
-.task-error { max-width: 520px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--error); font-size: 10px; }
+.task-error, .task-recovered { max-width: 520px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.task-error { color: var(--error); }.task-recovered { color: var(--success); }
 .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; }
 .status-pill i { width: 5px; height: 5px; border-radius: 50%; }.status-pill.completed { background: var(--success-bg); color: var(--success); }.status-pill.completed i { background: var(--success); }.status-pill.active { background: var(--warning-bg); color: var(--warning); }.status-pill.active i { background: var(--warning); }.status-pill.failed { background: var(--error-bg); color: var(--error); }.status-pill.failed i { background: var(--error); }
 .task-provider, .task-time { min-width: 0; display: flex; flex-direction: column; gap: 2px; }.task-provider small, .task-time small { color: var(--text-3); font-size: 9px; }.task-provider strong, .task-time strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-1); font: 600 11px var(--font-body); }.task-provider span, .task-time span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: 500 9px var(--font-mono); }
