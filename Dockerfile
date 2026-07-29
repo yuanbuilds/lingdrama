@@ -21,8 +21,8 @@ RUN npm ci --omit=dev
 # ── Stage 3: Production image (lean) ────────────────────────
 FROM node:20-alpine
 
-# ffmpeg (runtime) + tsx (runs TS directly)
-RUN apk add --no-cache ffmpeg libstdc++ \
+# ffmpeg (runtime) + CJK fonts for burned-in Chinese subtitles + tsx
+RUN apk add --no-cache ffmpeg libstdc++ font-noto-cjk \
     && npm i -g tsx
 
 WORKDIR /app
