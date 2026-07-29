@@ -83,7 +83,7 @@
                     <span class="config-base mono truncate">{{ c.base_url || '未设置 Base URL' }}</span>
                   </div>
                 </div>
-                <span :class="['tag', c.api_key ? 'tag-success' : 'tag-error']">{{ c.api_key ? '已配置' : '无密钥' }}</span>
+                <span :class="['tag', c.has_api_key ? 'tag-success' : 'tag-error']">{{ c.has_api_key ? '已配置' : '无密钥' }}</span>
                 <button class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">测试</button>
                 <label class="toggle"><input type="checkbox" :checked="c.is_active" @change="toggleCfg(c)"><span /></label>
                 <button class="btn btn-ghost btn-icon" @click="startEditCfg(c)"><Pencil :size="13" /></button>
@@ -282,7 +282,7 @@
           <input v-model.number="cfgForm.priority" class="input" type="number" min="0" max="999" />
           <span class="field-hint">数值越高越优先。工作台默认会优先使用同类型里优先级最高的启用配置。</span>
         </label>
-        <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
+        <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" :placeholder="cfgEditId ? '留空则保留现有密钥' : 'sk-...'" /></label>
         <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
         <div class="endpoint-hint">
           <span class="dim">实际端点前缀：</span>
@@ -381,6 +381,7 @@ const providerPresets = {
     volcengine: { label: 'Volcengine', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedream-4-0-250828'] },
   },
   video: {
+    openai: { label: 'OpenAI Compatible', baseUrl: 'https://api.openai.com', models: ['sora-2'] },
     volcengine: { label: 'Volcengine', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-1-5-pro-251215'] },
     vidu: { label: 'Vidu', baseUrl: 'https://api.vidu.com', models: ['viduq3-turbo'] },
     ali: { label: 'Alibaba Cloud', baseUrl: 'https://dashscope.aliyuncs.com', models: ['wan2.6-i2v-flash'] },
@@ -440,7 +441,7 @@ function startEditCfg(c) {
   Object.assign(cfgForm, {
     name: c.name || '',
     provider: c.provider,
-    api_key: c.api_key || '',
+    api_key: '',
     base_url: c.base_url || '',
     modelStr: fmtModel(c.model),
     service_type: c.service_type,
@@ -474,7 +475,8 @@ async function testExistingCfg(c) {
   await testCfgPayload({
     service_type: c.service_type,
     provider: c.provider,
-    api_key: c.api_key || '',
+    api_key: '',
+    config_id: c.id,
     base_url: c.base_url || '',
     model: Array.isArray(c.model) ? c.model : [],
   })
@@ -483,7 +485,7 @@ async function saveCfg() {
   if (!cfgForm.provider) { toast.warning('选择服务商'); return }
   const models = cfgForm.modelStr.split(',').map(s => s.trim()).filter(Boolean)
   try {
-    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority })
+    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, ...(cfgForm.api_key ? { api_key: cfgForm.api_key } : {}), base_url: cfgForm.base_url, model: models, priority: cfgForm.priority })
     else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority })
     cfgDialog.value = false; toast.success('已保存'); loadCfgs()
   } catch (e) { toast.error(e.message) }
@@ -597,7 +599,7 @@ function getAgentCfg(type) {
 
 const textModelGroups = computed(() => {
   return cfgs.value
-    .filter(c => c.service_type === 'text' && c.is_active && c.api_key)
+    .filter(c => c.service_type === 'text' && c.is_active && c.has_api_key)
     .map(c => ({
       label: `${c.provider} — ${c.name}`,
       models: Array.isArray(c.model) ? c.model : (c.model ? [c.model] : []),

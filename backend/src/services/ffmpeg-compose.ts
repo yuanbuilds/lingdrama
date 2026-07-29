@@ -11,7 +11,7 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { now } from '../utils/response.js'
 import { generateTTS } from './tts-generation.js'
-import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn } from '../utils/task-logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STORAGE_ROOT = process.env.STORAGE_PATH || path.resolve(__dirname, '../../../data/static')
@@ -96,10 +96,20 @@ export async function composeStoryboard(storyboardId: number): Promise<string> {
         const pureDialogue = parsedDialogue.pureText
         if (pureDialogue) {
           logTaskProgress('ComposeTask', 'generate-inline-tts', { storyboardId, voiceId, textPreview: pureDialogue.slice(0, 40) })
-          const ttsPath = await generateTTS({ text: pureDialogue, voice: voiceId, configId: ep?.audioConfigId ?? undefined })
-          audioPath = toAbsPath(ttsPath)
-          db.update(schema.storyboards).set({ ttsAudioUrl: ttsPath, updatedAt: now() })
-            .where(eq(schema.storyboards.id, storyboardId)).run()
+          try {
+            const ttsPath = await generateTTS({ text: pureDialogue, voice: voiceId, configId: ep?.audioConfigId ?? undefined })
+            audioPath = toAbsPath(ttsPath)
+            db.update(schema.storyboards).set({ ttsAudioUrl: ttsPath, updatedAt: now() })
+              .where(eq(schema.storyboards.id, storyboardId)).run()
+          } catch (err) {
+            // Video models such as Seedance can provide their own soundtrack.
+            // Keep composing with source audio and subtitles when no TTS service
+            // is configured instead of failing the entire production pipeline.
+            logTaskWarn('ComposeTask', 'inline-tts-unavailable-use-source-audio', {
+              storyboardId,
+              error: (err as Error).message,
+            })
+          }
         }
       }
     }
@@ -159,7 +169,9 @@ export async function composeStoryboard(storyboardId: number): Promise<string> {
       if (audioPath) {
         outputOptions.push('-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-shortest')
       } else {
-        outputOptions.push('-an')
+        // Preserve native model audio (rain, ambience, generated speech, etc.).
+        // The optional map also works for providers that return silent video.
+        outputOptions.push('-map', '0:v', '-map', '0:a?', '-c:a', 'aac')
       }
 
       cmd.outputOptions(outputOptions)

@@ -4,9 +4,23 @@ import { db, schema } from '../db/index.js'
 import { success, notFound, created, badRequest, now } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { joinProviderUrl } from '../services/adapters/url.js'
+import { getConfigById } from '../services/ai.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
+
+function isMaskedApiKey(value: unknown) {
+  return /^\*{3,}$/.test(String(value || '').trim())
+}
+
+function publicConfig(row: any) {
+  return {
+    ...toSnakeCase(row),
+    api_key: row.apiKey ? '***' : '',
+    has_api_key: Boolean(row.apiKey),
+    model: row.model ? JSON.parse(row.model) : [],
+  }
+}
 
 function bearerHeaders(apiKey?: string, withJson = false) {
   const headers: Record<string, string> = {}
@@ -111,10 +125,7 @@ app.get('/', async (c) => {
   let rows = db.select().from(schema.aiServiceConfigs).all()
   if (serviceType) rows = rows.filter(r => r.serviceType === serviceType)
 
-  const parsed = rows.map(r => ({
-    ...toSnakeCase(r),
-    model: r.model ? JSON.parse(r.model) : [],
-  }))
+  const parsed = rows.map(publicConfig)
   return success(c, parsed)
 })
 
@@ -144,10 +155,7 @@ app.post('/', async (c) => {
   const [row] = db.select().from(schema.aiServiceConfigs)
     .where(eq(schema.aiServiceConfigs.id, Number(res.lastInsertRowid))).all()
 
-  return created(c, {
-    ...toSnakeCase(row),
-    model: row.model ? JSON.parse(row.model) : [],
-  })
+  return created(c, publicConfig(row))
 })
 
 // POST /ai-configs/test
@@ -158,7 +166,11 @@ app.post('/test', async (c) => {
   }
 
   const model = Array.isArray(body.model) ? body.model[0] : body.model
-  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, body.api_key)
+  let apiKey = body.api_key
+  if ((!apiKey || isMaskedApiKey(apiKey)) && body.config_id) {
+    apiKey = getConfigById(Number(body.config_id))?.apiKey || ''
+  }
+  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, apiKey)
   const probeUrl = redactUrl(probe.url)
 
   logTaskProgress('AIConfig', 'probe-start', {
@@ -224,10 +236,7 @@ app.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [row] = db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, id)).all()
   if (!row) return notFound(c)
-  return success(c, {
-    ...toSnakeCase(row),
-    model: row.model ? JSON.parse(row.model) : [],
-  })
+  return success(c, publicConfig(row))
 })
 
 // PUT /ai-configs/:id
@@ -239,7 +248,8 @@ app.put('/:id', async (c) => {
   if ('provider' in body) updates.provider = body.provider
   if ('name' in body) updates.name = body.name
   if ('base_url' in body) updates.baseUrl = body.base_url
-  if ('api_key' in body) updates.apiKey = body.api_key
+  if ('api_key' in body && body.api_key && !isMaskedApiKey(body.api_key)) updates.apiKey = body.api_key
+  if (body.clear_api_key === true) updates.apiKey = ''
   if ('model' in body) updates.model = JSON.stringify(body.model)
   if ('priority' in body) updates.priority = body.priority
   if ('is_active' in body) updates.isActive = body.is_active

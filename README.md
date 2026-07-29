@@ -10,6 +10,7 @@
 - 角色形象、场景图、镜头图与宫格图生成
 - 分镜视频、TTS 配音、字幕与音视频合成
 - 多家文本、图片、视频与音频服务商配置
+- OpenAI 兼容 `/v1/videos` 异步视频任务、鉴权下载与原生音轨保留
 - 中文 / English 界面切换
 - SQLite 数据持久化与 Docker 单容器部署
 
@@ -35,6 +36,16 @@ docker run -d \
 ```
 
 启动后访问 `http://服务器地址:5679`。首次使用时，请在「设置 / Settings」中添加自己的 AI 服务地址、模型和 API Key。
+
+生产环境建议将密钥挂载为只读文件，在设置里的 API Key 填写
+`file:/run/secrets/lingdrama/provider_key`。配置接口只返回密钥是否存在，
+不会回传原文；也支持 `env:VARIABLE_NAME` 引用环境变量。
+
+```bash
+docker run ... \
+  -v "$(pwd)/secrets:/run/secrets/lingdrama:ro" \
+  lingdrama:local
+```
 
 也可以使用 Compose：
 

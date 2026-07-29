@@ -123,7 +123,7 @@ async function processVideoGeneration(id: number, config: AIConfig) {
     const resp = await fetch(url, {
       method,
       headers,
-      body: JSON.stringify(body),
+      body: body instanceof FormData ? body : JSON.stringify(body),
     })
 
     if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`)
@@ -134,7 +134,7 @@ async function processVideoGeneration(id: number, config: AIConfig) {
     if (!isAsync && videoUrl) {
       logTaskProgress('VideoTask', 'sync-complete', { id, videoUrl })
       // 同步模式
-      await handleVideoComplete(id, videoUrl, record.duration)
+      await handleVideoComplete(id, videoUrl, record.duration, record.storyboardId)
       return
     }
 
@@ -151,7 +151,7 @@ async function processVideoGeneration(id: number, config: AIConfig) {
       return
     }
 
-    pollVideoTask(id, config, taskId!, record.storyboardId)
+    pollVideoTask(id, config, taskId!, record.storyboardId, record.duration)
   } catch (err: any) {
     logTaskError('VideoTask', 'process', { id, provider: config.provider, error: err.message })
     db.update(schema.videoGenerations)
@@ -195,7 +195,13 @@ async function normalizeVideoReferenceUrls(raw: string | null | undefined): Prom
   return normalized.filter((item): item is string => !!item)
 }
 
-async function pollVideoTask(id: number, config: AIConfig, taskId: string, storyboardId?: number | null) {
+async function pollVideoTask(
+  id: number,
+  config: AIConfig,
+  taskId: string,
+  storyboardId?: number | null,
+  duration?: number | null,
+) {
   const adapter = getVideoAdapter(config.provider)
 
   for (let i = 0; i < 300; i++) {
@@ -216,14 +222,31 @@ async function pollVideoTask(id: number, config: AIConfig, taskId: string, story
 
       const pollResp = adapter.parsePollResponse(result)
 
-      if (pollResp.status === 'completed' && pollResp.videoUrl) {
-        logTaskSuccess('VideoTask', 'poll-complete', { id, taskId, videoUrl: pollResp.videoUrl })
-        await handleVideoComplete(id, pollResp.videoUrl, null, storyboardId)
-        return
+      if (pollResp.status === 'completed') {
+        if (pollResp.videoUrl) {
+          logTaskSuccess('VideoTask', 'poll-complete', { id, taskId, videoUrl: pollResp.videoUrl })
+          await handleVideoComplete(id, pollResp.videoUrl, duration, storyboardId)
+          return
+        }
+        if (adapter.buildDownloadRequest) {
+          const download = adapter.buildDownloadRequest(config, taskId)
+          logTaskSuccess('VideoTask', 'poll-complete-protected-download', {
+            id,
+            taskId,
+            url: redactUrl(download.url),
+          })
+          await handleProtectedVideoComplete(id, download.url, download.headers, duration, storyboardId)
+          return
+        }
+        throw new Error('Video completed but the provider returned no downloadable URL')
       }
       if (pollResp.status === 'failed') {
         logTaskError('VideoTask', 'poll-failed', { id, taskId, error: pollResp.error || 'Video generation failed' })
-        throw new Error(pollResp.error || 'Video generation failed')
+        db.update(schema.videoGenerations)
+          .set({ status: 'failed', errorMsg: pollResp.error || 'Video generation failed', updatedAt: now() })
+          .where(eq(schema.videoGenerations.id, id))
+          .run()
+        return
       }
     } catch (err: any) {
       if (i === 299) {
@@ -239,8 +262,29 @@ async function pollVideoTask(id: number, config: AIConfig, taskId: string, story
   }
 }
 
+async function handleProtectedVideoComplete(
+  id: number,
+  videoUrl: string,
+  headers: Record<string, string>,
+  duration: number | null | undefined,
+  storyboardId?: number | null,
+) {
+  const localPath = await downloadFile(videoUrl, 'videos', { headers, extension: '.mp4' })
+  await persistVideoComplete(id, videoUrl, localPath, duration, storyboardId)
+}
+
 async function handleVideoComplete(id: number, videoUrl: string, duration: number | null | undefined, storyboardId?: number | null) {
   const localPath = await downloadFile(videoUrl, 'videos')
+  await persistVideoComplete(id, videoUrl, localPath, duration, storyboardId)
+}
+
+async function persistVideoComplete(
+  id: number,
+  videoUrl: string,
+  localPath: string,
+  duration: number | null | undefined,
+  storyboardId?: number | null,
+) {
   db.update(schema.videoGenerations)
     .set({ videoUrl, localPath, status: 'completed', completedAt: now(), updatedAt: now() })
     .where(eq(schema.videoGenerations.id, id))

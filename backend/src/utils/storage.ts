@@ -13,15 +13,19 @@ const STORAGE_ROOT = process.env.STORAGE_PATH || path.resolve(__dirname, '../../
 /**
  * 下载远程文件到本地存储
  */
-export async function downloadFile(url: string, subDir: string): Promise<string> {
+export async function downloadFile(
+  url: string,
+  subDir: string,
+  options: { headers?: Record<string, string>; extension?: string } = {},
+): Promise<string> {
   const dir = path.join(STORAGE_ROOT, subDir)
   fs.mkdirSync(dir, { recursive: true })
 
-  const ext = getExtFromUrl(url)
+  const ext = normalizeExtension(options.extension) || getExtFromUrl(url)
   const filename = `${uuid()}${ext}`
   const filePath = path.join(dir, filename)
 
-  const resp = await fetch(url)
+  const resp = await fetch(url, { headers: options.headers })
   if (!resp.ok) throw new Error(`Download failed: ${resp.status}`)
 
   const buffer = Buffer.from(await resp.arrayBuffer())
@@ -29,6 +33,12 @@ export async function downloadFile(url: string, subDir: string): Promise<string>
 
   // 返回相对路径（供 API 返回给前端）
   return `static/${subDir}/${filename}`
+}
+
+function normalizeExtension(extension?: string) {
+  if (!extension) return ''
+  const normalized = extension.startsWith('.') ? extension : `.${extension}`
+  return /^\.[a-z0-9]{1,8}$/i.test(normalized) ? normalized : ''
 }
 
 /**

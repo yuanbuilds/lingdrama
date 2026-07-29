@@ -54,6 +54,13 @@ export interface VideoProviderAdapter {
 
   buildPollRequest(config: AIConfig, taskId: string): ProviderRequest
 
+  /**
+   * Some asynchronous providers expose the completed media through a
+   * protected download endpoint instead of returning a public URL while
+   * polling (for example the OpenAI-compatible /v1/videos API).
+   */
+  buildDownloadRequest?(config: AIConfig, taskId: string): ProviderRequest
+
   parsePollResponse(result: any): VideoPollResponse
 
   extractVideoUrl(result: any): string | null
