@@ -1438,7 +1438,7 @@
 <script setup>
 import { toast } from 'vue-sonner'
 import {
-  Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download,
+  Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download, Loader2,
 } from 'lucide-vue-next'
 import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
 import { useAgent } from '~/composables/useAgent'
@@ -1606,7 +1606,7 @@ const gridHistory = ref([])
 const showAllGridHistory = ref(false)
 const activeGridCell = ref(0)
 const gridAssignmentPage = ref(0)
-const gridStorageKey = computed(() => `huobao:grid:${dramaId}:${epId.value || episodeNumber}`)
+const gridStorageKey = computed(() => `lingdrama:grid:${dramaId}:${epId.value || episodeNumber}`)
 
 const gridModes = [
   { id: 'first_frame', label: '首帧', desc: '每格=一个镜头的首帧' },
