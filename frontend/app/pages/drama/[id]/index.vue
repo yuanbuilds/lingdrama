@@ -435,11 +435,11 @@ const messages = {
     productionOnline: '制作空间在线', aiProduction: 'AI CINEMATIC PRODUCTION', noDescription: '这个项目还没有简介，可在项目设置中补充创作方向。', continueProduction: '继续制作', startProduction: '开始制作', watchLatest: '查看最新成片',
     episodes: '剧集', shots: '分镜', runtime: '成片时长', delivered: '已交付', latestMaster: 'LATEST MASTER', projectCanvas: 'PROJECT CANVAS', visualWaiting: '等待首个视觉镜头', visualWaitingHint: '进入剧集工作台生成分镜画面后，这里会自动更新。', openVideo: '打开成片',
     productionMap: 'PRODUCTION MAP', episodePipeline: '剧集制作进度', addEpisode: '添加一集', masterReady: '成片就绪', shotsUnit: '镜头', openStudio: '进入工作台', createFirst: '创建第一集', createFirstHint: '从故事梗概开始建立这个项目的第一条生产线。', latestSequence: 'LATEST SEQUENCE', visualContinuity: '最近镜头序列',
-    scriptReady: '剧本已就绪', waitingForScript: '等待剧本', noEpisodeDescription: '尚未填写本集简介', completedSteps: '项流程已完成',
+    scriptReady: '剧本已就绪', waitingForScript: '等待剧本', noEpisodeDescription: '尚未填写本集简介', completedSteps: '项流程已完成', coreMasterComplete: '核心成片已完成',
     productionPulse: 'PRODUCTION PULSE', readiness: '制作就绪度', liveData: '实时数据', projectDelivered: '已有成片可交付', projectInProgress: '项目正在制作中', projectNotStarted: '等待启动制作', deliveredHint: '成片与源资产均可继续回看和迭代。', inProgressHint: '生产数据已同步，可从未完成的剧集继续。', notStartedHint: '创建或进入剧集，即可启动内容生产。',
     story: '剧本', characters: '角色', scenes: '场景', storyboard: '分镜', videoShots: '视频镜头', ready: '已就绪', notReady: '待创建',
     delivery: 'DELIVERY', latestOutput: '最新交付', version: '版本', duration: '时长', format: '格式', finalMaster: '最终成片', downloadMaster: '下载成片', noOutput: '尚无可交付成片', noOutputHint: '镜头合成完成后，最终成片会自动出现在这里。',
-    assetLibrary: 'ASSET LIBRARY', productionAssets: '项目资产', assetHint: '所有内容直接来自当前项目的真实生产数据。', assetAwaiting: '等待生成', noAssetDescription: '暂无资产说明', goToStudio: '前往制作工作台',
+    assetLibrary: 'ASSET LIBRARY', productionAssets: '项目资产', assetHint: '所有内容直接来自当前项目的真实生产数据。', assetAwaiting: '设定已就绪', noAssetDescription: '暂无资产说明', goToStudio: '前往制作工作台',
     characterAssets: '角色', sceneAssets: '场景', shotAssets: '分镜', videoAssets: '视频', characterEmpty: '角色资产尚未建立', characterEmptyHint: '解析剧本后，角色及其视觉设定会显示在这里。', sceneEmpty: '场景资产尚未建立', sceneEmptyHint: '解析剧本并生成场景后，场景画面会显示在这里。', shotEmpty: '还没有分镜资产', shotEmptyHint: '在剧集工作台完成分镜拆解后即可查看。', videoEmpty: '还没有视频镜头', videoEmptyHint: '生成视频后，每个真实镜头都会在这里出现。',
     lastUpdated: '项目最近更新', deleteProject: '删除项目', projectSettings: 'PROJECT SETTINGS', editProjectHint: '更新客户在项目空间中看到的基础信息。', projectTitle: '项目名称', genre: '题材', visualStyle: '视觉风格', description: '项目简介', cancel: '取消', saving: '保存中…', saveChanges: '保存修改',
     episodeSetup: 'EPISODE SETUP', createEpisode: '创建新剧集', episodeSetupHint: '为本集锁定图片、视频与音频生成服务。', image: '图片服务', video: '视频服务', audio: '音频服务', episodeTitle: '剧集名称', episodeTitlePlaceholder: '留空将按集数自动命名', imageConfig: '图片配置', videoConfig: '视频配置', audioConfig: '音频配置', chooseImage: '选择图片服务', chooseVideo: '选择视频服务', chooseAudio: '选择音频服务', configLocked: '这些生成配置创建后将跟随当前剧集。', creating: '创建中…', createAndOpen: '创建剧集',
@@ -450,11 +450,11 @@ const messages = {
     productionOnline: 'Production space online', aiProduction: 'AI CINEMATIC PRODUCTION', noDescription: 'No project description yet. Add the creative direction in project settings.', continueProduction: 'Continue production', startProduction: 'Start production', watchLatest: 'Watch latest master',
     episodes: 'Episodes', shots: 'Shots', runtime: 'Master runtime', delivered: 'Delivered', latestMaster: 'LATEST MASTER', projectCanvas: 'PROJECT CANVAS', visualWaiting: 'Waiting for the first visual', visualWaitingHint: 'Generated storyboard frames will appear here automatically.', openVideo: 'Open master video',
     productionMap: 'PRODUCTION MAP', episodePipeline: 'Episode pipeline', addEpisode: 'Add episode', masterReady: 'Master ready', shotsUnit: 'shots', openStudio: 'Open studio', createFirst: 'Create the first episode', createFirstHint: 'Start the project production line from your story outline.', latestSequence: 'LATEST SEQUENCE', visualContinuity: 'Recent shot sequence',
-    scriptReady: 'Script ready', waitingForScript: 'Waiting for script', noEpisodeDescription: 'No episode description', completedSteps: 'steps completed',
+    scriptReady: 'Script ready', waitingForScript: 'Waiting for script', noEpisodeDescription: 'No episode description', completedSteps: 'steps completed', coreMasterComplete: 'Core master complete',
     productionPulse: 'PRODUCTION PULSE', readiness: 'Production readiness', liveData: 'Live data', projectDelivered: 'A master is ready to deliver', projectInProgress: 'Production is in progress', projectNotStarted: 'Ready to start production', deliveredHint: 'The master and source assets remain available for iteration.', inProgressHint: 'Production data is synced. Continue from any unfinished episode.', notStartedHint: 'Create or open an episode to begin production.',
     story: 'Script', characters: 'Characters', scenes: 'Scenes', storyboard: 'Storyboards', videoShots: 'Video shots', ready: 'Ready', notReady: 'Pending',
     delivery: 'DELIVERY', latestOutput: 'Latest output', version: 'Version', duration: 'Runtime', format: 'Format', finalMaster: 'Final master', downloadMaster: 'Download master', noOutput: 'No deliverable yet', noOutputHint: 'The final master will appear here after shot composition.',
-    assetLibrary: 'ASSET LIBRARY', productionAssets: 'Production assets', assetHint: 'Every item is sourced directly from this project’s production data.', assetAwaiting: 'Awaiting generation', noAssetDescription: 'No asset description', goToStudio: 'Go to production studio',
+    assetLibrary: 'ASSET LIBRARY', productionAssets: 'Production assets', assetHint: 'Every item is sourced directly from this project’s production data.', assetAwaiting: 'Definition ready', noAssetDescription: 'No asset description', goToStudio: 'Go to production studio',
     characterAssets: 'Characters', sceneAssets: 'Scenes', shotAssets: 'Shots', videoAssets: 'Videos', characterEmpty: 'No character assets yet', characterEmptyHint: 'Characters and visual definitions will appear after script extraction.', sceneEmpty: 'No scene assets yet', sceneEmptyHint: 'Scene visuals will appear after extraction and generation.', shotEmpty: 'No storyboard assets yet', shotEmptyHint: 'Break down an episode into shots in the production studio.', videoEmpty: 'No video shots yet', videoEmptyHint: 'Each generated video shot will appear here.',
     lastUpdated: 'Project last updated', deleteProject: 'Delete project', projectSettings: 'PROJECT SETTINGS', editProjectHint: 'Update the information clients see across the project space.', projectTitle: 'Project title', genre: 'Genre', visualStyle: 'Visual style', description: 'Description', cancel: 'Cancel', saving: 'Saving…', saveChanges: 'Save changes',
     episodeSetup: 'EPISODE SETUP', createEpisode: 'Create episode', episodeSetupHint: 'Lock image, video and audio generation services for this episode.', image: 'Image', video: 'Video', audio: 'Audio', episodeTitle: 'Episode title', episodeTitlePlaceholder: 'Leave blank to name by episode number', imageConfig: 'Image service', videoConfig: 'Video service', audioConfig: 'Audio service', chooseImage: 'Choose image service', chooseVideo: 'Choose video service', chooseAudio: 'Choose audio service', configLocked: 'These generation settings stay with this episode after creation.', creating: 'Creating…', createAndOpen: 'Create episode',
@@ -493,6 +493,7 @@ const heroPoster = computed(() => {
 })
 const heroVideo = computed(() => mediaUrl(drama.value?.preview_video || latestDelivery.value?.merged_url))
 const projectProgress = computed(() => {
+  if (latestDelivery.value) return 100
   const statuses = episodes.value.flatMap(ep => Object.values(detailFor(ep.id).pipeline?.steps || {}))
   if (!statuses.length) return 0
   return Math.round(statuses.filter(step => step?.status === 'done').length / statuses.length * 100)
@@ -575,11 +576,13 @@ function episodeDuration(ep) {
   return formatDuration(duration)
 }
 function episodeProgress(ep) {
+  if (episodeMerge(ep)?.status === 'completed') return 100
   const steps = Object.values(episodeInfo(ep).pipeline?.steps || {})
   if (!steps.length) return hasScript(ep) ? 10 : 0
   return Math.round(steps.filter(step => step?.status === 'done').length / steps.length * 100)
 }
 function completedStepLabel(ep) {
+  if (episodeMerge(ep)?.status === 'completed') return copy.value.coreMasterComplete
   const steps = Object.values(episodeInfo(ep).pipeline?.steps || {})
   const done = steps.filter(step => step?.status === 'done').length
   return `${done}/${steps.length || 10} ${copy.value.completedSteps}`

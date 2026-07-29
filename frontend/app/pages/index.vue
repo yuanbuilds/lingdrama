@@ -308,7 +308,7 @@ const copy = computed(() => locale.value === 'en-US' ? {
   projectName: 'Project name', projectPlaceholder: 'Example: The 59th Second', plannedEpisodes: 'Planned episodes', visualStyle: 'Visual style', selectStyle: 'Select a style',
   cancel: 'Cancel', createProject: 'Create project', creating: 'Creating…', loadFailed: 'Projects could not be loaded', retry: 'Try again',
   confirmDelete: (title) => `Delete “${title}”? This cannot be undone.`, deleted: 'Project deleted', createError: 'Project could not be created',
-  noDescription: (episodes, assets) => `${episodes} episodes · ${assets} production assets ready for development.`,
+  noDescription: (episodes, assets) => `${episodes} ${episodes === 1 ? 'episode' : 'episodes'} · ${assets} ${assets === 1 ? 'production asset' : 'production assets'} ready for development.`,
   justNow: 'Just now', minutesAgo: (n) => `${n} min ago`, hoursAgo: (n) => `${n} hr ago`, daysAgo: (n) => `${n} d ago`,
   stages: { deliver: 'Ready to deliver', production: 'In production', script: 'Script ready', prep: 'In development' },
   workflow: {
