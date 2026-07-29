@@ -7,6 +7,11 @@
       </button>
 
       <nav class="studio-shellnav" :aria-label="copy.navigation">
+        <NuxtLink to="/showcase" class="studio-showcase-link" :title="copy.showcase">
+          <svg viewBox="0 0 24 24"><path d="M4 5.5h16v13H4z"/><path d="m10 9 5 3-5 3V9Z"/></svg>
+          <span>{{ copy.showcase }}</span>
+          <i></i>
+        </NuxtLink>
         <NuxtLink to="/" :title="copy.projects">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>{{ copy.projects }}</span>
@@ -23,6 +28,9 @@
 
       <div class="studio-shell-actions">
         <span class="workspace-label">{{ copy.workspace }}</span>
+        <NuxtLink to="/settings" class="studio-settings" :title="copy.settings" :aria-label="copy.settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.05.05-2.88 2.88-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.05.05-2.88-2.88.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.86l-.05-.05 2.88-2.88.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.05-.05 2.88 2.88-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+        </NuxtLink>
         <button class="studio-locale" type="button" :title="localeTitle" @click="toggleLocale">
           {{ locale === 'zh-CN' ? 'EN' : '中' }}
         </button>
@@ -40,9 +48,9 @@ import { useLingLocale } from '~/composables/useLingLocale'
 
 const { locale, localeTitle, toggleLocale } = useLingLocale()
 const copy = computed(() => locale.value === 'en-US' ? {
-  home: 'LingDrama home', navigation: 'Studio navigation', projects: 'Projects', assets: 'Assets', tasks: 'Tasks', workspace: 'PRODUCTION WORKSPACE',
+  home: 'LingDrama home', navigation: 'Studio navigation', showcase: 'Showcase', projects: 'Projects', assets: 'Assets', tasks: 'Tasks', settings: 'Settings', workspace: 'PRODUCTION WORKSPACE',
 } : {
-  home: '返回灵动首页', navigation: '制作台导航', projects: '项目', assets: '资产', tasks: '任务', workspace: '制作工作台',
+  home: '返回灵动首页', navigation: '制作台导航', showcase: '成果展厅', projects: '项目', assets: '资产', tasks: '任务', settings: '设置', workspace: '制作工作台',
 })
 </script>
 
@@ -108,8 +116,40 @@ const copy = computed(() => locale.value === 'en-US' ? {
 .studio-shellnav a:hover,
 .studio-shellnav a.router-link-active { color: var(--accent-text); background: var(--accent-bg); }
 .studio-shellnav svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.studio-shellnav .studio-showcase-link {
+  position: relative;
+  color: #a7ddeb;
+  border: 1px solid rgba(91, 207, 240, 0.11);
+  background: linear-gradient(135deg, rgba(45, 186, 226, 0.09), rgba(101, 91, 232, 0.07));
+}
+.studio-shellnav .studio-showcase-link:hover,
+.studio-shellnav .studio-showcase-link.router-link-active {
+  color: #ecfbff;
+  border-color: rgba(102, 218, 249, 0.22);
+  background: linear-gradient(135deg, rgba(45, 196, 234, 0.16), rgba(101, 91, 232, 0.13));
+}
+.studio-showcase-link i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #65def5;
+  box-shadow: 0 0 8px #65def5;
+}
 .studio-shell-actions { justify-self: end; display: flex; align-items: center; gap: 10px; }
 .workspace-label { color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.studio-settings {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: color .18s, background .18s, border-color .18s;
+}
+.studio-settings:hover,
+.studio-settings.router-link-active { color: var(--text-2); background: rgba(255,255,255,.035); border-color: var(--border); }
+.studio-settings svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .studio-locale {
   width: 30px;
   height: 28px;
@@ -132,5 +172,7 @@ const copy = computed(() => locale.value === 'en-US' ? {
   .studio-brand > span, .workspace-label, .studio-shellnav span { display: none; }
   .studio-shellnav { justify-self: center; }
   .studio-shellnav a { padding: 0 8px; }
+  .studio-showcase-link i { position: absolute; top: 5px; right: 5px; }
+  .studio-settings { display: none; }
 }
 </style>

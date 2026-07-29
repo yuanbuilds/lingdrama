@@ -8,11 +8,17 @@
         </span>
         <span class="brand-copy">
           <span class="brand-title"><b>灵动</b><span>LingDrama</span></span>
-          <span class="brand-caption">AI PRODUCTION STUDIO</span>
+          <span class="brand-caption">{{ copy.tagline }}</span>
         </span>
+        <span class="brand-edition">{{ copy.edition }}</span>
       </button>
 
       <nav class="primary-nav" :aria-label="copy.navigation">
+        <NuxtLink to="/showcase" class="nav-link nav-link-showcase" :class="{ active: isActive('/showcase') }">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4z"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 2.8h8M9 21.2h6"/></svg>
+          <span>{{ copy.showcase }}</span>
+          <i class="showcase-signal"></i>
+        </NuxtLink>
         <NuxtLink to="/" class="nav-link" :class="{ active: isActive('/') }">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>{{ copy.projects }}</span>
@@ -28,9 +34,9 @@
       </nav>
 
       <div class="header-actions">
-        <NuxtLink to="/settings" class="settings-link" :class="{ active: isActive('/settings') }" :title="copy.settings">
+        <NuxtLink to="/settings" class="settings-link" :class="{ active: isActive('/settings') }" :title="copy.settings" :aria-label="copy.settings">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.05.05-2.88 2.88-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.05.05-2.88-2.88.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.86l-.05-.05 2.88-2.88.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.05-.05 2.88 2.88-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
-          <span>{{ copy.settings }}</span>
+          <span class="sr-only">{{ copy.settings }}</span>
         </NuxtLink>
         <button class="locale-switch" type="button" :title="localeTitle" @click="toggleLocale">
           <span :class="{ active: locale === 'zh-CN' }">中</span>
@@ -57,6 +63,9 @@ const { locale, localeTitle, toggleLocale } = useLingLocale()
 const copy = computed(() => locale.value === 'en-US' ? {
   home: 'LingDrama home',
   navigation: 'Main navigation',
+  tagline: 'AI SHORT DRAMA STUDIO',
+  edition: 'SHOWCASE EDITION',
+  showcase: 'Showcase',
   projects: 'Projects',
   assets: 'Assets',
   tasks: 'Tasks',
@@ -64,6 +73,9 @@ const copy = computed(() => locale.value === 'en-US' ? {
 } : {
   home: '返回灵动首页',
   navigation: '主导航',
+  tagline: 'AI 短剧创作与制片平台',
+  edition: '公开展示版',
+  showcase: '成果展厅',
   projects: '项目',
   assets: '资产',
   tasks: '任务',
@@ -144,6 +156,19 @@ function isActive(path) {
 .brand-title b { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
 .brand-title span { color: var(--text-2); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
 .brand-caption { margin-top: 5px; color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 0.16em; }
+.brand-edition {
+  margin-left: 2px;
+  padding: 4px 7px;
+  border: 1px solid rgba(102, 210, 255, 0.16);
+  border-radius: 999px;
+  color: rgba(154, 221, 244, 0.76);
+  background: rgba(64, 180, 225, 0.06);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
 
 .primary-nav {
   display: flex;
@@ -191,10 +216,46 @@ function isActive(path) {
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
   box-shadow: 0 0 10px var(--accent);
 }
+.nav-link-showcase {
+  padding-left: 12px;
+  padding-right: 12px;
+  color: #a4dbed;
+  background: linear-gradient(135deg, rgba(53, 195, 232, 0.08), rgba(102, 92, 235, 0.07));
+  border-color: rgba(95, 203, 240, 0.1);
+}
+.nav-link-showcase:hover {
+  color: #e9fbff;
+  border-color: rgba(94, 212, 250, 0.2);
+  background: linear-gradient(135deg, rgba(53, 195, 232, 0.14), rgba(102, 92, 235, 0.11));
+}
+.nav-link-showcase.active {
+  color: #f1fcff;
+  background: linear-gradient(135deg, rgba(53, 207, 243, 0.2), rgba(105, 99, 244, 0.16));
+  border-color: rgba(103, 220, 255, 0.28);
+  box-shadow: 0 0 26px rgba(65, 198, 241, 0.1), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.showcase-signal {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #62def7;
+  box-shadow: 0 0 10px rgba(98,222,247,0.9);
+}
 
 .header-actions { justify-self: end; display: flex; align-items: center; gap: 8px; }
 .settings-link { min-height: 32px; padding: 0 9px; font-size: 11px; }
 .settings-link.active { color: var(--accent-text); background: var(--accent-bg); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .locale-switch {
   height: 32px;
   display: inline-flex;
@@ -220,6 +281,7 @@ function isActive(path) {
   .app-header { grid-template-columns: auto 1fr auto; gap: 12px; padding: 0 16px; }
   .app-header::after { left: 16px; right: 16px; }
   .brand-copy { display: none; }
+  .brand-edition { display: none; }
   .primary-nav { justify-self: center; }
   .settings-link span { display: none; }
 }
@@ -230,8 +292,10 @@ function isActive(path) {
   .brand-mark { width: 34px; height: 34px; }
   .brand-logo { width: 28px; height: 28px; }
   .primary-nav { gap: 1px; padding: 3px; }
-  .nav-link { min-height: 32px; padding: 0 9px; }
+  .nav-link { min-height: 32px; padding: 0 8px; }
   .nav-link span { display: none; }
+  .nav-link-showcase { padding: 0 9px; }
+  .showcase-signal { position: absolute; top: 5px; right: 5px; width: 4px; height: 4px; }
   .settings-link { display: none; }
   .locale-switch { padding: 0 8px; }
 }

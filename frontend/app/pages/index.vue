@@ -26,22 +26,18 @@
       <section class="hero" :class="{ 'has-project': featured }">
         <div class="hero-copy">
           <div class="eyebrow"><span></span> LINGDRAMA · AI PRODUCTION STUDIO</div>
-          <h1 v-if="locale === 'zh-CN'">让每个故事，<br><em>拥有电影般的生命。</em></h1>
-          <h1 v-else>Turn every story<br><em>into cinematic life.</em></h1>
+          <h1 v-if="locale === 'zh-CN'">故事，不止被写下。<br><em>它被拍成一部短剧。</em></h1>
+          <h1 v-else>Stories are not only written.<br><em>They become films.</em></h1>
           <p>{{ copy.heroDescription }}</p>
 
           <div class="hero-actions">
-            <button class="btn btn-primary hero-primary" type="button" @click="showCreate = true">
-              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-              {{ copy.newProject }}
+            <button class="btn btn-primary hero-primary" type="button" @click="navigateTo('/showcase')">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9l3 3-3 3m5 0h3"/></svg>
+              {{ copy.viewShowcase }}
             </button>
-            <button v-if="featured" class="btn hero-secondary" type="button" @click="openProject(featured)">
-              {{ copy.continueProject }}
+            <button class="btn hero-secondary" type="button" @click="enterStudio">
+              {{ copy.enterStudio }}
               <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
-            <button v-else class="btn hero-secondary" type="button" @click="scrollProjects">
-              {{ copy.viewWorkspace }}
-              <svg viewBox="0 0 24 24"><path d="M12 5v14m-6-6 6 6 6-6"/></svg>
             </button>
           </div>
 
@@ -68,10 +64,17 @@
           </div>
         </div>
 
-        <button v-if="featured" class="featured-project" type="button" @click="openProject(featured)">
+        <article v-if="featured" class="featured-project">
           <div class="feature-media">
-            <img v-if="projectCover(featured)" :src="projectCover(featured)" :alt="featured.title" />
-            <video v-else-if="projectPreviewVideo(featured)" :src="projectPreviewVideo(featured)" muted loop autoplay playsinline preload="metadata"></video>
+            <video
+              v-if="projectPreviewVideo(featured)"
+              :src="projectPreviewVideo(featured)"
+              :poster="projectCover(featured) || undefined"
+              controls
+              playsinline
+              preload="metadata"
+            ></video>
+            <img v-else-if="projectCover(featured)" :src="projectCover(featured)" :alt="featured.title" />
             <div v-else class="media-empty feature-empty">
               <span class="empty-orbit"></span>
               <strong>{{ projectInitial(featured) }}</strong>
@@ -85,23 +88,23 @@
           <div class="feature-info">
             <div class="feature-heading">
               <div>
-                <span class="feature-kicker">{{ copy.recentProduction }}</span>
+              <span class="feature-kicker">{{ copy.latestResult }}</span>
                 <h2>{{ featured.title }}</h2>
               </div>
-              <span class="round-arrow"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
+              <button class="round-arrow" type="button" :aria-label="copy.openProject" @click="openProject(featured)"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
             </div>
             <p>{{ projectSummary(featured) }}</p>
             <div class="feature-footer">
-              <div class="feature-metric"><b>{{ featured.episodes?.length || 0 }}</b><span>{{ copy.episodeUnit }}</span></div>
-              <div class="feature-metric"><b>{{ featured.characters?.length || 0 }}</b><span>{{ copy.characterUnit }}</span></div>
-              <div class="feature-metric"><b>{{ featured.scenes?.length || 0 }}</b><span>{{ copy.sceneUnit }}</span></div>
+              <div class="feature-metric"><b>{{ featured.episodes?.length || 0 }}</b><span>{{ unitLabel('episode', featured.episodes?.length || 0) }}</span></div>
+              <div class="feature-metric"><b>{{ featured.characters?.length || 0 }}</b><span>{{ unitLabel('character', featured.characters?.length || 0) }}</span></div>
+              <div class="feature-metric"><b>{{ featured.scenes?.length || 0 }}</b><span>{{ unitLabel('scene', featured.scenes?.length || 0) }}</span></div>
               <div class="feature-progress">
                 <span><b>{{ projectProgress(featured) }}%</b>{{ copy.productionProgress }}</span>
                 <div><i :style="{ width: projectProgress(featured) + '%' }"></i></div>
               </div>
             </div>
           </div>
-        </button>
+        </article>
 
         <div v-else class="featured-project feature-intro" aria-hidden="true">
           <div class="intro-grid"></div>
@@ -113,14 +116,48 @@
         </div>
       </section>
 
+      <section class="capability-section">
+        <div class="capability-head">
+          <div>
+            <span class="section-kicker">{{ copy.productionSystem }}</span>
+            <h2>{{ copy.workflowTitle }}</h2>
+            <p>{{ copy.workflowDescription }}</p>
+          </div>
+          <button class="workflow-showcase-link" type="button" @click="navigateTo('/showcase')">
+            {{ copy.viewAllResults }}
+            <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+
+        <div class="capability-chain">
+          <article v-for="(capability, index) in capabilities" :key="capability.key" class="capability-card">
+            <div class="capability-top">
+              <span class="capability-index">{{ String(index + 1).padStart(2, '0') }}</span>
+              <span class="capability-signal"><i></i>{{ capability.value }} {{ capability.unit }}</span>
+            </div>
+            <div class="capability-node">
+              <svg v-if="capability.key === 'story'" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 9h8M8 13h8M8 17h5"/></svg>
+              <svg v-else-if="capability.key === 'assets'" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M4 19c0-3 2-5 5-5s5 2 5 5M15 5h5v5h-5zM16 14h4v5h-4z"/></svg>
+              <svg v-else-if="capability.key === 'shots'" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14M3 10h5M16 10h5M3 15h5M16 15h5"/></svg>
+              <svg v-else-if="capability.key === 'video'" viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="m17 10 4-2v8l-4-2zM8 9l4 3-4 3z"/></svg>
+              <svg v-else viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/><path d="m14 16 2 2 4-5"/></svg>
+            </div>
+            <h3>{{ capability.title }}</h3>
+            <p>{{ capability.description }}</p>
+            <span v-if="index < capabilities.length - 1" class="chain-arrow" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
+          </article>
+        </div>
+      </section>
+
       <section id="project-library" class="project-library">
         <div class="section-head">
           <div>
             <span class="section-kicker">{{ copy.projectLibrary }}</span>
             <h2>{{ copy.yourProductions }}</h2>
+            <p class="section-description">{{ copy.projectsDescription }}</p>
           </div>
           <div class="section-meta">
-            <span>{{ dramas.length }} {{ copy.projectUnit }}</span>
+            <span>{{ dramas.length }} {{ unitLabel('project', dramas.length) }}</span>
             <button class="icon-create" type="button" :title="copy.newProject" @click="showCreate = true">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </button>
@@ -159,11 +196,11 @@
                 <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
               </div>
               <div class="project-meta">
-                <span>{{ drama.episodes?.length || 0 }} {{ copy.episodeUnit }}</span>
+                <span>{{ drama.episodes?.length || 0 }} {{ unitLabel('episode', drama.episodes?.length || 0) }}</span>
                 <i></i>
-                <span>{{ drama.characters?.length || 0 }} {{ copy.characterUnit }}</span>
+                <span>{{ drama.characters?.length || 0 }} {{ unitLabel('character', drama.characters?.length || 0) }}</span>
                 <i></i>
-                <span>{{ visualAssetCount(drama) }} {{ copy.visualAssetUnit }}</span>
+                <span>{{ visualAssetCount(drama) }} {{ unitLabel('visual', visualAssetCount(drama)) }}</span>
               </div>
               <div class="project-progress-row">
                 <div class="project-progress"><i :style="{ width: projectProgress(drama) + '%' }"></i></div>
@@ -256,11 +293,14 @@ const form = ref({ title: '', total_episodes: 1, style: 'cinematic' })
 const styles = ['realistic', 'cinematic', 'anime', 'comic', 'ghibli', 'watercolor']
 
 const copy = computed(() => locale.value === 'en-US' ? {
-  heroDescription: 'One continuous AI workspace for script development, visual assets, storyboards, video production, review, and delivery.',
-  newProject: 'New production', continueProject: 'Continue production', viewWorkspace: 'View workspace', overview: 'Production overview',
-  projects: 'Projects', episodes: 'Episodes', assets: 'Assets', finalCuts: 'Final cuts', recentProduction: 'RECENT PRODUCTION',
+  heroDescription: 'LingDrama turns source material into a coherent short-drama production — from story development and visual assets to shots, video, review, and final delivery.',
+  newProject: 'New production', viewShowcase: 'View results gallery', enterStudio: 'Enter production studio', overview: 'Production overview',
+  projects: 'Projects', episodes: 'Episodes', assets: 'Assets', finalCuts: 'Final cuts', latestResult: 'LATEST RELEASE', openProject: 'Open production project',
   episodeUnit: 'episodes', characterUnit: 'characters', sceneUnit: 'scenes', visualAssetUnit: 'visuals', productionProgress: 'Production progress',
-  projectLibrary: 'PROJECT LIBRARY', yourProductions: 'Your productions', projectUnit: 'projects', deleteProject: 'Delete project',
+  productionSystem: 'PRODUCTION SYSTEM', workflowTitle: 'One story. One continuous production chain.',
+  workflowDescription: 'Every stage stays connected, so characters, scenes, shots, sound, and delivery remain part of the same production context.',
+  viewAllResults: 'Explore the results gallery',
+  projectLibrary: 'REAL PRODUCTIONS', yourProductions: 'Projects made with LingDrama', projectsDescription: 'Real project records, footage, and production progress from this workspace.', projectUnit: 'projects', deleteProject: 'Delete project',
   awaitingVisuals: 'Visual assets pending', createNext: 'Start another story', createNextDescription: 'Build a new production from source material',
   emptyTitle: 'Your first production starts here', emptyDescription: 'Create a project, add your story, and move from script to final cut in one workspace.', createFirst: 'Create first project',
   createDialog: 'Create drama project', createDescription: 'Set the basic direction. You can refine the script, cast, and visual language inside the workspace.',
@@ -271,13 +311,23 @@ const copy = computed(() => locale.value === 'en-US' ? {
   noDescription: (episodes, assets) => `${episodes} episodes · ${assets} production assets ready for development.`,
   justNow: 'Just now', minutesAgo: (n) => `${n} min ago`, hoursAgo: (n) => `${n} hr ago`, daysAgo: (n) => `${n} d ago`,
   stages: { deliver: 'Ready to deliver', production: 'In production', script: 'Script ready', prep: 'In development' },
+  workflow: {
+    story: { title: 'Story & script', description: 'Develop source material into a structured, production-ready script.' },
+    assets: { title: 'Characters & worlds', description: 'Build reusable character, scene, and visual references for continuity.' },
+    shots: { title: 'Storyboard direction', description: 'Break the script into executable shots, framing, action, and prompts.' },
+    video: { title: 'Video production', description: 'Generate motion from keyframes, then combine dialogue, sound, and subtitles.' },
+    delivery: { title: 'Review & delivery', description: 'Review every shot, assemble the episode, and export the final video.' },
+  },
   styleLabels: { realistic: 'Realistic', cinematic: 'Cinematic', anime: 'Anime', comic: 'Graphic novel', ghibli: 'Painterly anime', watercolor: 'Watercolor' },
 } : {
-  heroDescription: '从剧本开发、视觉资产与分镜，到视频生产、审片和交付，让创作在一个连续的 AI 工作空间里完成。',
-  newProject: '新建短剧', continueProject: '继续最近项目', viewWorkspace: '查看工作空间', overview: '制作概览',
-  projects: '项目', episodes: '剧集', assets: '生产资产', finalCuts: '成片', recentProduction: '最近制作',
+  heroDescription: '灵动 LingDrama 将故事原文变成一条连贯的短剧生产链——从故事开发、视觉资产与分镜，到视频制作、审片和最终交付。',
+  newProject: '新建短剧', viewShowcase: '查看成果展厅', enterStudio: '进入制作空间', overview: '制作概览',
+  projects: '项目', episodes: '剧集', assets: '生产资产', finalCuts: '成片', latestResult: '最新成果', openProject: '打开制作项目',
   episodeUnit: '集', characterUnit: '角色', sceneUnit: '场景', visualAssetUnit: '视觉资产', productionProgress: '制作进度',
-  projectLibrary: 'PROJECT LIBRARY', yourProductions: '短剧项目库', projectUnit: '个项目', deleteProject: '删除项目',
+  productionSystem: 'PRODUCTION SYSTEM', workflowTitle: '一个故事，一条完整生产链。',
+  workflowDescription: '所有阶段共享同一份创作上下文，让人物、场景、镜头、声音与交付始终保持连接。',
+  viewAllResults: '浏览全部成果',
+  projectLibrary: 'REAL PRODUCTIONS', yourProductions: 'LingDrama 真实制作案例', projectsDescription: '这里展示来自当前制作空间的真实项目、画面与生产进度。', projectUnit: '个项目', deleteProject: '删除项目',
   awaitingVisuals: '等待视觉资产', createNext: '开始另一个故事', createNextDescription: '从故事原文建立新的短剧制作项目',
   emptyTitle: '第一部作品，从这里开始', emptyDescription: '创建项目、放入故事，在同一个工作空间里完成从剧本到成片。', createFirst: '创建第一个项目',
   createDialog: '新建短剧项目', createDescription: '先确定基本方向；剧本、角色、风格与镜头都可以在制作工作台里继续完善。',
@@ -288,6 +338,13 @@ const copy = computed(() => locale.value === 'en-US' ? {
   noDescription: (episodes, assets) => `已建立 ${episodes} 集内容与 ${assets} 项生产资产，可继续进入制作。`,
   justNow: '刚刚', minutesAgo: (n) => `${n} 分钟前`, hoursAgo: (n) => `${n} 小时前`, daysAgo: (n) => `${n} 天前`,
   stages: { deliver: '可交付', production: '制作中', script: '剧本就绪', prep: '筹备中' },
+  workflow: {
+    story: { title: '故事与剧本', description: '把故事原文整理为结构清晰、可以进入生产的短剧剧本。' },
+    assets: { title: '角色与世界', description: '建立可复用的角色、场景与视觉参考，保持内容连续性。' },
+    shots: { title: '导演与分镜', description: '将剧本拆解为可执行的景别、构图、动作与生成提示。' },
+    video: { title: '视频生产', description: '由关键帧生成动态镜头，并完成对白、声音与字幕合成。' },
+    delivery: { title: '审片与交付', description: '逐镜检查、整集合成并导出可以直接交付的最终成片。' },
+  },
   styleLabels: { realistic: '写实', cinematic: '电影感', anime: '动画', comic: '漫画', ghibli: '手绘动画', watercolor: '水彩' },
 })
 
@@ -300,8 +357,30 @@ const stats = computed(() => dramas.value.reduce((result, drama) => {
   result.films += drama.production_summary?.final_ready
     ? 1
     : (drama.episodes || []).filter(episode => episode.video_url || episode.videoUrl).length
+  result.shots += drama.production_summary?.shots || 0
+  result.videoShots += drama.production_summary?.videos_ready || 0
   return result
-}, { projects: 0, episodes: 0, assets: 0, films: 0 }))
+}, { projects: 0, episodes: 0, assets: 0, films: 0, shots: 0, videoShots: 0 }))
+
+const capabilities = computed(() => [
+  { key: 'story', ...copy.value.workflow.story, value: stats.value.episodes, unit: unitLabel('episode', stats.value.episodes) },
+  { key: 'assets', ...copy.value.workflow.assets, value: stats.value.assets, unit: unitLabel('asset', stats.value.assets) },
+  { key: 'shots', ...copy.value.workflow.shots, value: stats.value.shots, unit: unitLabel('shot', stats.value.shots) },
+  { key: 'video', ...copy.value.workflow.video, value: stats.value.videoShots, unit: unitLabel('videoShot', stats.value.videoShots) },
+  { key: 'delivery', ...copy.value.workflow.delivery, value: stats.value.films, unit: unitLabel('finalCut', stats.value.films) },
+])
+
+function unitLabel(kind, count) {
+  if (locale.value === 'zh-CN') {
+    return { episode: '集', character: '角色', scene: '场景', project: '个项目', visual: '视觉资产', asset: '生产资产', shot: '镜头', videoShot: '视频镜头', finalCut: '成片' }[kind] || ''
+  }
+  const labels = {
+    episode: ['episode', 'episodes'], character: ['character', 'characters'], scene: ['scene', 'scenes'], project: ['project', 'projects'],
+    visual: ['visual', 'visuals'], asset: ['asset', 'assets'], shot: ['shot', 'shots'], videoShot: ['video shot', 'video shots'], finalCut: ['final cut', 'final cuts'],
+  }
+  const pair = labels[kind] || ['', '']
+  return count === 1 ? pair[0] : pair[1]
+}
 
 async function load() {
   loading.value = true
@@ -348,6 +427,14 @@ function closeCreate() {
 
 function openProject(drama) {
   navigateTo(`/drama/${drama.id}`)
+}
+
+function enterStudio() {
+  if (featured.value) {
+    openProject(featured.value)
+    return
+  }
+  showCreate.value = true
 }
 
 function scrollProjects() {
@@ -414,7 +501,10 @@ function projectStage(drama) {
 }
 
 function projectSummary(drama) {
-  return drama.description || copy.value.noDescription(drama.episodes?.length || 0, (drama.characters?.length || 0) + (drama.scenes?.length || 0))
+  return copy.value.noDescription(
+    drama.episodes?.length || 0,
+    (drama.characters?.length || 0) + (drama.scenes?.length || 0),
+  )
 }
 
 function projectInitial(drama) {
@@ -486,12 +576,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .real-stat strong { color: var(--text-0); font-family: var(--font-mono); font-size: 19px; line-height: 1; }
 .real-stat span { color: var(--text-3); font-size: 10px; font-weight: 600; letter-spacing: .05em; }
 
-.featured-project { width: 100%; padding: 0; color: inherit; text-align: left; background: rgba(11, 16, 27, .84); border: 1px solid var(--border); border-radius: 24px; box-shadow: 0 38px 100px rgba(0, 0, 0, .38); cursor: pointer; overflow: hidden; transition: transform .35s var(--ease-out), border-color .3s, box-shadow .3s; }
-button.featured-project:hover { transform: translateY(-5px); border-color: rgba(109, 211, 255, .3); box-shadow: 0 46px 110px rgba(0, 0, 0, .47), 0 0 55px rgba(70, 111, 255, .07); }
+.featured-project { width: 100%; padding: 0; color: inherit; text-align: left; background: rgba(11, 16, 27, .84); border: 1px solid var(--border); border-radius: 24px; box-shadow: 0 38px 100px rgba(0, 0, 0, .38); overflow: hidden; transition: transform .35s var(--ease-out), border-color .3s, box-shadow .3s; }
+.featured-project:hover { transform: translateY(-5px); border-color: rgba(109, 211, 255, .3); box-shadow: 0 46px 110px rgba(0, 0, 0, .47), 0 0 55px rgba(70, 111, 255, .07); }
 .feature-media { position: relative; height: 310px; overflow: hidden; background: #090c14; }
 .feature-media > img, .feature-media > video { width: 100%; height: 100%; display: block; object-fit: cover; transition: transform .7s var(--ease-out); }
 .featured-project:hover .feature-media > img, .featured-project:hover .feature-media > video { transform: scale(1.035); }
-.feature-vignette, .media-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(3, 6, 12, .08), transparent 48%, rgba(4, 7, 13, .82)); }
+.feature-vignette, .media-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(3, 6, 12, .08), transparent 48%, rgba(4, 7, 13, .82)); }
 .feature-index { position: absolute; left: 18px; top: 17px; color: rgba(235, 244, 255, .72); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .14em; text-shadow: 0 1px 8px #000; }
 .feature-status, .stage-pill { position: absolute; right: 18px; top: 15px; display: flex; align-items: center; gap: 6px; min-height: 25px; padding: 0 9px; color: #ddf9ff; background: rgba(5, 10, 18, .64); border: 1px solid rgba(150, 205, 232, .2); border-radius: 999px; backdrop-filter: blur(12px); font-size: 9px; font-weight: 600; }
 .feature-status i, .stage-pill i { width: 5px; height: 5px; border-radius: 50%; background: var(--success); box-shadow: 0 0 9px rgba(84, 219, 156, .75); }
@@ -505,7 +595,8 @@ button.featured-project:hover { transform: translateY(-5px); border-color: rgba(
 .feature-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .feature-kicker { display: block; margin-bottom: 6px; color: var(--accent-text); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .15em; }
 .feature-heading h2 { max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 21px; }
-.round-arrow { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 50%; }
+.round-arrow { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 50%; cursor: pointer; transition: color .18s, border-color .18s, transform .18s; }
+.round-arrow:hover { color: var(--accent); border-color: var(--border-strong); transform: translateX(2px); }
 .round-arrow svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .feature-info > p { margin-top: 11px; color: var(--text-3); font-size: 11px; line-height: 1.65; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .feature-footer { display: flex; align-items: flex-end; gap: 22px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border); }
@@ -535,10 +626,34 @@ button.featured-project:hover { transform: translateY(-5px); border-color: rgba(
 .intro-timeline i { height: 4px; background: rgba(149, 176, 218, .12); border-radius: 99px; }
 .intro-timeline i:first-child { background: linear-gradient(90deg, var(--accent), #7085ff); box-shadow: 0 0 12px rgba(81, 201, 255, .3); }
 
-.project-library { scroll-margin-top: 24px; padding-top: 18px; }
+.capability-section { position: relative; padding: 62px 0 66px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.capability-section::before { content: ''; position: absolute; inset: 0 14%; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(61, 117, 255, .06), transparent 60%); }
+.capability-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; margin-bottom: 30px; }
+.capability-head h2 { max-width: 720px; font-size: 29px; }
+.capability-head p { max-width: 680px; margin-top: 10px; color: var(--text-3); font-size: 11px; line-height: 1.75; }
+.workflow-showcase-link { display: inline-flex; align-items: center; gap: 7px; min-height: 35px; padding: 0 12px; color: var(--accent-text); background: var(--accent-bg); border: 1px solid rgba(100, 210, 255, .14); border-radius: 9px; cursor: pointer; font-size: 10px; font-weight: 700; white-space: nowrap; transition: border-color .18s, transform .18s; }
+.workflow-showcase-link:hover { border-color: rgba(100, 210, 255, .34); transform: translateX(2px); }
+.workflow-showcase-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.capability-chain { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.capability-card { position: relative; min-width: 0; min-height: 245px; padding: 19px 17px 18px; background: linear-gradient(150deg, rgba(18, 25, 40, .86), rgba(10, 14, 23, .72)); border: 1px solid var(--border); border-radius: 15px; box-shadow: 0 14px 35px rgba(0, 0, 0, .16); transition: transform .22s var(--ease-out), border-color .2s, background .2s; }
+.capability-card:hover { z-index: 2; transform: translateY(-4px); border-color: rgba(100, 210, 255, .24); background: linear-gradient(150deg, rgba(21, 31, 49, .94), rgba(11, 16, 27, .84)); }
+.capability-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.capability-index { color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .12em; }
+.capability-signal { display: flex; align-items: center; gap: 5px; color: var(--text-3); font-family: var(--font-mono); font-size: 7px; white-space: nowrap; }
+.capability-signal i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px rgba(104, 216, 255, .7); }
+.capability-node { width: 44px; height: 44px; display: grid; place-items: center; margin-top: 28px; color: var(--accent-text); background: linear-gradient(135deg, rgba(75, 201, 255, .11), rgba(111, 100, 255, .1)); border: 1px solid rgba(107, 204, 255, .13); border-radius: 13px; }
+.capability-node svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.capability-card h3 { margin-top: 18px; font-size: 14px; }
+.capability-card > p { margin-top: 8px; color: var(--text-3); font-size: 9.5px; line-height: 1.7; }
+.chain-arrow { position: absolute; z-index: 3; right: -16px; top: 91px; width: 21px; height: 21px; display: grid; place-items: center; color: var(--text-3); background: #0b101b; border: 1px solid var(--border); border-radius: 50%; }
+.chain-arrow > i { position: absolute; left: -7px; right: -7px; height: 1px; z-index: -1; background: linear-gradient(90deg, rgba(104, 216, 255, .3), rgba(120, 107, 255, .28)); }
+.chain-arrow svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
+.project-library { scroll-margin-top: 24px; padding-top: 58px; }
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .section-kicker { display: block; margin-bottom: 7px; color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .18em; }
 .section-head h2 { font-size: 25px; }
+.section-description { max-width: 620px; margin-top: 8px; color: var(--text-3); font-size: 10px; line-height: 1.65; }
 .section-meta { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: 10px; }
 .icon-create { width: 33px; height: 33px; display: grid; place-items: center; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; }
 .icon-create:hover { color: var(--accent); border-color: var(--border-strong); }
@@ -626,6 +741,8 @@ button.featured-project:hover { transform: translateY(-5px); border-color: rgba(
   .hero { grid-template-columns: minmax(0, .9fr) minmax(410px, 1.1fr); gap: 30px; }
   .hero h1 { font-size: clamp(38px, 5vw, 56px); }
   .feature-media { height: 270px; }
+  .capability-chain { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chain-arrow { display: none; }
   .project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -636,6 +753,9 @@ button.featured-project:hover { transform: translateY(-5px); border-color: rgba(
   .hero-copy > p { max-width: 640px; }
   .featured-project { max-width: 680px; }
   .feature-intro { min-height: 330px; }
+  .capability-section { padding: 48px 0; }
+  .capability-head { align-items: flex-start; flex-direction: column; gap: 18px; }
+  .capability-chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .create-modal { grid-template-columns: 1fr; max-width: 570px; }
   .modal-visual { display: none; }
 }
@@ -651,6 +771,10 @@ button.featured-project:hover { transform: translateY(-5px); border-color: rgba(
   .feature-media { height: 220px; }
   .feature-footer { gap: 14px; flex-wrap: wrap; }
   .feature-progress { width: 100%; margin-left: 0; }
+  .capability-head h2 { font-size: 24px; }
+  .capability-chain { grid-template-columns: 1fr; }
+  .capability-card { min-height: 210px; }
+  .capability-node { margin-top: 20px; }
   .project-grid { grid-template-columns: 1fr; }
   .section-head h2 { font-size: 21px; }
   .new-project-card { min-height: 190px; }
