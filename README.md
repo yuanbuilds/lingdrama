@@ -73,6 +73,9 @@ npm run dev
 本仓库保留完整 Git 历史，并配置原始项目为 `upstream`。同步上游时建议先在独立分支完成合并和验证：
 
 ```bash
+# 新克隆的工作区首次执行一次
+git remote add upstream https://github.com/chatfire-AI/huobao-drama.git
+
 git fetch upstream
 git switch -c codex/sync-upstream
 git merge upstream/master
