@@ -11,6 +11,10 @@ export default defineNuxtConfig({
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'LingDrama AI-powered short drama production workspace' },
+        { name: 'application-name', content: 'LingDrama AI Studio' },
+        { name: 'theme-color', content: '#090d18' },
+        { property: 'og:title', content: '灵动 LingDrama · AI Short Drama Studio' },
+        { property: 'og:description', content: 'From story to final cut in one AI-native production workspace.' },
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

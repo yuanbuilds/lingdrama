@@ -32,6 +32,18 @@ app.get('/', async (c) => {
       .where(eq(schema.characters.dramaId, drama.id))
     const scns = await db.select().from(schema.scenes)
       .where(eq(schema.scenes.dramaId, drama.id))
+    const episodeIds = new Set(eps.map(ep => ep.id))
+    const storyboards = db.select().from(schema.storyboards).all()
+      .filter(storyboard => episodeIds.has(storyboard.episodeId) && !storyboard.deletedAt)
+    const merges = db.select().from(schema.videoMerges).all()
+      .filter(merge => merge.dramaId === drama.id && !merge.deletedAt)
+    const latestMerge = merges.at(-1)
+    const previewStoryboard = [...storyboards].reverse().find(storyboard => (
+      storyboard.composedImage || storyboard.firstFrameImage || storyboard.lastFrameImage
+    ))
+    const previewVideoStoryboard = [...storyboards].reverse().find(storyboard => (
+      storyboard.composedVideoUrl || storyboard.videoUrl
+    ))
     return {
       ...toSnakeCase(drama),
       tags: drama.tags ? JSON.parse(drama.tags) : [],
@@ -39,6 +51,14 @@ app.get('/', async (c) => {
       episodes: toSnakeCaseArray(eps),
       characters: toSnakeCaseArray(chars),
       scenes: toSnakeCaseArray(scns),
+      preview_image: drama.thumbnail || previewStoryboard?.composedImage || previewStoryboard?.firstFrameImage || previewStoryboard?.lastFrameImage || null,
+      preview_video: latestMerge?.mergedUrl || previewVideoStoryboard?.composedVideoUrl || previewVideoStoryboard?.videoUrl || null,
+      production_summary: {
+        shots: storyboards.length,
+        images_ready: storyboards.filter(storyboard => Boolean(storyboard.composedImage || storyboard.firstFrameImage)).length,
+        videos_ready: storyboards.filter(storyboard => Boolean(storyboard.composedVideoUrl || storyboard.videoUrl)).length,
+        final_ready: latestMerge?.status === 'completed',
+      },
     }
   }))
 
@@ -110,6 +130,18 @@ app.get('/:id', async (c) => {
     .where(eq(schema.scenes.dramaId, id))
   const prps = await db.select().from(schema.props)
     .where(eq(schema.props.dramaId, id))
+  const episodeIds = new Set(eps.map(ep => ep.id))
+  const storyboards = db.select().from(schema.storyboards).all()
+    .filter(storyboard => episodeIds.has(storyboard.episodeId) && !storyboard.deletedAt)
+  const merges = db.select().from(schema.videoMerges).all()
+    .filter(merge => merge.dramaId === id && !merge.deletedAt)
+  const latestMerge = merges.at(-1)
+  const previewStoryboard = [...storyboards].reverse().find(storyboard => (
+    storyboard.composedImage || storyboard.firstFrameImage || storyboard.lastFrameImage
+  ))
+  const previewVideoStoryboard = [...storyboards].reverse().find(storyboard => (
+    storyboard.composedVideoUrl || storyboard.videoUrl
+  ))
 
   return success(c, {
     ...toSnakeCase(drama),
@@ -118,6 +150,15 @@ app.get('/:id', async (c) => {
     characters: toSnakeCaseArray(chars),
     scenes: toSnakeCaseArray(scns),
     props: toSnakeCaseArray(prps),
+    preview_image: drama.thumbnail || previewStoryboard?.composedImage || previewStoryboard?.firstFrameImage || previewStoryboard?.lastFrameImage || null,
+    preview_video: latestMerge?.mergedUrl || previewVideoStoryboard?.composedVideoUrl || previewVideoStoryboard?.videoUrl || null,
+    storyboards: toSnakeCaseArray(storyboards),
+    production_summary: {
+      shots: storyboards.length,
+      images_ready: storyboards.filter(storyboard => Boolean(storyboard.composedImage || storyboard.firstFrameImage)).length,
+      videos_ready: storyboards.filter(storyboard => Boolean(storyboard.composedVideoUrl || storyboard.videoUrl)).length,
+      final_ready: latestMerge?.status === 'completed',
+    },
   })
 })
 

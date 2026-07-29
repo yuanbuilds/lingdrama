@@ -46,5 +46,6 @@ tmp/
 temp/
 .superpowers/
 .playwright-cli/
+/output/
 /CLAUDE.md
 /AGENTS.md

@@ -90,6 +90,12 @@ export const gridAPI = {
 export const videoAPI = {
   generate: (d: any) => api.post('/videos', d),
   get: (id: number) => api.get(`/videos/${id}`),
+  list: (params?: { drama_id?: number; storyboard_id?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.drama_id) query.set('drama_id', String(params.drama_id))
+    if (params?.storyboard_id) query.set('storyboard_id', String(params.storyboard_id))
+    return api.get(`/videos${query.size ? `?${query.toString()}` : ''}`)
+  },
 }
 export const composeAPI = {
   shot: (id: number) => api.post(`/compose/storyboards/${id}/compose`),

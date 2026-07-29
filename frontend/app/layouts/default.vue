@@ -1,47 +1,46 @@
 <template>
-  <div class="shell">
-    <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <button class="brand" @click="navigateTo('/')">
-          <div class="brand-mark">
-            <img v-if="showBrandImage" :src="brandLogo" alt="灵动 LingDrama" class="brand-logo" @error="showBrandImage = false" />
-            <span v-else class="brand-fallback">灵</span>
-          </div>
-          <div class="brand-text">
-            <span class="brand-name">灵动</span>
-            <span class="brand-sub">LingDrama</span>
-          </div>
-        </button>
-      </div>
+  <div class="app-shell">
+    <header class="app-header">
+      <button class="brand" type="button" :aria-label="copy.home" @click="navigateTo('/')">
+        <span class="brand-mark">
+          <img v-if="showBrandImage" :src="brandLogo" alt="" class="brand-logo" @error="showBrandImage = false" />
+          <span v-else class="brand-fallback">L</span>
+        </span>
+        <span class="brand-copy">
+          <span class="brand-title"><b>灵动</b><span>LingDrama</span></span>
+          <span class="brand-caption">AI PRODUCTION STUDIO</span>
+        </span>
+      </button>
 
-      <nav class="header-nav">
-        <NuxtLink to="/" class="nav-link" :class="{ active: route.path === '/' }">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-          </svg>
-          <span>项目</span>
+      <nav class="primary-nav" :aria-label="copy.navigation">
+        <NuxtLink to="/" class="nav-link" :class="{ active: isActive('/') }">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span>{{ copy.projects }}</span>
         </NuxtLink>
-        <NuxtLink to="/settings" class="nav-link" :class="{ active: route.path === '/settings' }">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          <span>设置</span>
+        <NuxtLink to="/assets" class="nav-link" :class="{ active: isActive('/assets') }">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.1-2.1L20 19"/></svg>
+          <span>{{ copy.assets }}</span>
+        </NuxtLink>
+        <NuxtLink to="/tasks" class="nav-link" :class="{ active: isActive('/tasks') }">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>
+          <span>{{ copy.tasks }}</span>
         </NuxtLink>
       </nav>
 
-      <div class="header-right">
+      <div class="header-actions">
+        <NuxtLink to="/settings" class="settings-link" :class="{ active: isActive('/settings') }" :title="copy.settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.05.05-2.88 2.88-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.05.05-2.88-2.88.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.86l-.05-.05 2.88-2.88.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.05-.05 2.88 2.88-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+          <span>{{ copy.settings }}</span>
+        </NuxtLink>
         <button class="locale-switch" type="button" :title="localeTitle" @click="toggleLocale">
           <span :class="{ active: locale === 'zh-CN' }">中</span>
-          <span class="locale-divider">/</span>
+          <i></i>
           <span :class="{ active: locale === 'en-US' }">EN</span>
         </button>
       </div>
     </header>
 
-    <main class="content">
+    <main class="app-content">
       <slot />
     </main>
   </div>
@@ -54,119 +53,186 @@ import { useLingLocale } from '~/composables/useLingLocale'
 const route = useRoute()
 const showBrandImage = ref(true)
 const { locale, localeTitle, toggleLocale } = useLingLocale()
+
+const copy = computed(() => locale.value === 'en-US' ? {
+  home: 'LingDrama home',
+  navigation: 'Main navigation',
+  projects: 'Projects',
+  assets: 'Assets',
+  tasks: 'Tasks',
+  settings: 'Settings',
+} : {
+  home: '返回灵动首页',
+  navigation: '主导航',
+  projects: '项目',
+  assets: '资产',
+  tasks: '任务',
+  settings: '设置',
+})
+
+function isActive(path) {
+  return path === '/' ? route.path === '/' : route.path.startsWith(path)
+}
 </script>
 
 <style scoped>
-.shell {
-  display: flex; flex-direction: column;
-  height: 100vh; overflow: hidden;
+.app-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg-base);
 }
 
-/* === Header === */
-.header {
-  display: flex; align-items: center;
-  height: 56px; flex-shrink: 0;
-  padding: 0 24px;
-  background: var(--bg-1);
+.app-header {
+  position: relative;
+  z-index: 20;
+  height: 68px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 0 30px;
+  background: rgba(7, 10, 17, 0.86);
   border-bottom: 1px solid var(--border);
-  gap: 32px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(22px) saturate(130%);
 }
 
-.header-left { display: flex; align-items: center; }
+.app-header::after {
+  content: '';
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 211, 255, 0.3), rgba(121, 102, 255, 0.2), transparent);
+  pointer-events: none;
+}
 
 .brand {
-  display: flex; align-items: center; gap: 10px;
-  background: none; border: none; cursor: pointer; padding: 0;
-  text-decoration: none; border-radius: var(--radius);
-  transition: opacity 0.15s;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 11px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
 }
-.brand:hover { opacity: 0.75; }
+.brand:hover .brand-mark { border-color: rgba(109, 216, 255, 0.46); box-shadow: 0 0 24px rgba(85, 205, 255, 0.16); }
 .brand-mark {
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--bg-2); border-radius: var(--radius);
-  border: 1px solid var(--border);
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(126, 160, 213, 0.22);
+  border-radius: 12px;
+  background: rgba(15, 21, 34, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.brand-logo {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  display: block;
-}
-.brand-fallback {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--accent-text);
-  line-height: 1;
-}
-.brand-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
-.brand-name {
-  font-family: var(--font-display);
-  font-size: 15px; font-weight: 700;
-  color: var(--text-0);
-  letter-spacing: -0.01em;
-}
-.brand-sub {
-  font-size: 10px; font-weight: 400;
-  color: var(--text-3); margin-top: 1px;
-  letter-spacing: 0.04em;
-}
+.brand-logo { width: 31px; height: 31px; display: block; }
+.brand-fallback { color: var(--accent); font-size: 16px; font-weight: 700; }
+.brand-copy { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+.brand-title { display: flex; align-items: baseline; gap: 7px; color: var(--text-0); white-space: nowrap; }
+.brand-title b { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
+.brand-title span { color: var(--text-2); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+.brand-caption { margin-top: 5px; color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 0.16em; }
 
-/* Nav */
-.header-nav { display: flex; gap: 4px; flex: 1; }
-.nav-link {
-  display: flex; align-items: center; gap: 7px;
-  padding: 7px 14px; border-radius: var(--radius);
-  font-size: 13px; font-weight: 500;
-  color: var(--text-2); text-decoration: none;
-  transition: all 0.18s var(--ease-out);
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(137, 163, 203, 0.1);
+  border-radius: 13px;
+  background: rgba(14, 19, 31, 0.7);
+}
+.nav-link,
+.settings-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 13px;
+  color: var(--text-3);
   border: 1px solid transparent;
-}
-.nav-link:hover {
-  background: var(--bg-hover); color: var(--text-0);
-  border-color: var(--border);
-}
-.nav-link.active {
-  background: var(--accent-bg);
-  color: var(--accent-text);
-  border-color: rgba(76,125,255,0.18);
+  border-radius: 9px;
+  text-decoration: none;
+  font-size: 12px;
   font-weight: 600;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+.nav-link svg,
+.settings-link svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.nav-link:hover,
+.settings-link:hover { color: var(--text-1); background: rgba(255, 255, 255, 0.035); }
+.nav-link.active {
+  color: #d9f8ff;
+  background: linear-gradient(135deg, rgba(66, 198, 255, 0.13), rgba(100, 103, 255, 0.1));
+  border-color: rgba(99, 208, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: -5px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 10px var(--accent);
 }
 
-.header-right { display: flex; align-items: center; margin-left: auto; }
-
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.settings-link { min-height: 32px; padding: 0 9px; font-size: 11px; }
+.settings-link.active { color: var(--accent-text); background: var(--accent-bg); }
 .locale-switch {
-  display: flex; align-items: center; gap: 5px;
-  min-height: 30px; padding: 5px 10px;
-  background: var(--bg-2); color: var(--text-3);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  font-family: var(--font-body); font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s var(--ease-out);
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: var(--text-3);
+  background: rgba(15, 21, 34, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  transition: border-color 0.18s, color 0.18s;
 }
 .locale-switch:hover { color: var(--text-1); border-color: var(--border-strong); }
+.locale-switch i { width: 1px; height: 11px; background: var(--border-strong); }
 .locale-switch .active { color: var(--accent-text); }
-.locale-divider { opacity: 0.45; }
 
-/* Film strip decoration */
-.film-strip {
-  display: flex; align-items: center; gap: 3px;
-  padding: 6px 10px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.film-frame {
-  width: 8px; height: 10px;
-  background: var(--bg-3);
-  border-radius: 1.5px;
-  transition: background 0.2s;
-}
-.film-frame:nth-child(2) { background: var(--accent); opacity: 0.6; }
-.film-frame:nth-child(3) { opacity: 0.3; }
+.app-content { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-/* Content */
-.content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+@media (max-width: 900px) {
+  .app-header { grid-template-columns: auto 1fr auto; gap: 12px; padding: 0 16px; }
+  .app-header::after { left: 16px; right: 16px; }
+  .brand-copy { display: none; }
+  .primary-nav { justify-self: center; }
+  .settings-link span { display: none; }
+}
+
+@media (max-width: 620px) {
+  .app-header { height: 60px; gap: 8px; padding: 0 10px; }
+  .app-header::after { left: 10px; right: 10px; }
+  .brand-mark { width: 34px; height: 34px; }
+  .brand-logo { width: 28px; height: 28px; }
+  .primary-nav { gap: 1px; padding: 3px; }
+  .nav-link { min-height: 32px; padding: 0 9px; }
+  .nav-link span { display: none; }
+  .settings-link { display: none; }
+  .locale-switch { padding: 0 8px; }
+}
 </style>
