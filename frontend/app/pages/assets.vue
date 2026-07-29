@@ -28,7 +28,7 @@
       <article class="stat-card">
         <span class="stat-kicker">{{ copy('动态镜头', 'Motion shots') }}</span>
         <strong>{{ videoCount }}</strong>
-        <span>{{ copy('已提交的视频任务', 'submitted video tasks') }}</span>
+        <span>{{ copy('已生成的动态镜头', 'generated motion clips') }}</span>
       </article>
       <article class="stat-card highlight">
         <span class="stat-kicker">{{ copy('可用素材', 'Ready to use') }}</span>
@@ -76,7 +76,7 @@
           <p>{{ asset.project || copy('未关联项目', 'Unassigned project') }}</p>
           <div class="asset-meta">
             <span>{{ formatDate(asset.updatedAt) }}</span>
-            <span v-if="asset.provider">{{ asset.provider }}</span>
+            <span>LingDrama</span>
           </div>
         </div>
       </article>
@@ -106,6 +106,11 @@ const keyword = ref('')
 
 const copy = (zh, en) => locale.value === 'en-US' ? en : zh
 const valueOf = (row, snake, camel = snake) => row?.[snake] ?? row?.[camel]
+const readyStates = new Set(['completed', 'complete', 'succeeded', 'done', 'success'])
+
+function isReadyResult(status, url) {
+  return Boolean(url) && readyStates.has(String(status || '').toLowerCase())
+}
 
 const projectMap = computed(() => new Map(dramas.value.map(drama => [Number(drama.id), drama.title])))
 
@@ -140,21 +145,27 @@ const assets = computed(() => {
   for (const image of imageRecords.value) {
     const dramaId = Number(valueOf(image, 'drama_id', 'dramaId'))
     const imageType = valueOf(image, 'image_type', 'imageType')
+    const url = mediaUrl(image, 'image')
+    const status = image.status || 'pending'
+    if (!isReadyResult(status, url)) continue
     add({
       key: `image-${image.id}`,
       kind: imageType === 'character' ? 'character' : imageType === 'scene' ? 'scene' : 'image',
       title: imageType ? `${kindLabel(imageType)} #${image.id}` : `${copy('镜头图', 'Shot image')} #${image.id}`,
       project: projectMap.value.get(dramaId), dramaId,
-      url: mediaUrl(image, 'image'), status: image.status || 'pending', provider: image.provider,
+      url, status,
       updatedAt: valueOf(image, 'completed_at', 'completedAt') || valueOf(image, 'updated_at', 'updatedAt'),
     })
   }
 
   for (const video of videoRecords.value) {
     const dramaId = Number(valueOf(video, 'drama_id', 'dramaId'))
+    const url = mediaUrl(video, 'video')
+    const status = video.status || 'pending'
+    if (!isReadyResult(status, url)) continue
     add({
       key: `video-${video.id}`, kind: 'video', title: `${copy('生成镜头', 'Generated shot')} #${video.id}`,
-      project: projectMap.value.get(dramaId), dramaId, url: mediaUrl(video, 'video'), status: video.status || 'pending', provider: video.provider,
+      project: projectMap.value.get(dramaId), dramaId, url, status,
       updatedAt: valueOf(video, 'completed_at', 'completedAt') || valueOf(video, 'updated_at', 'updatedAt'),
     })
   }
@@ -164,7 +175,7 @@ const assets = computed(() => {
 
 const imageCount = computed(() => assets.value.filter(asset => asset.kind !== 'video').length)
 const videoCount = computed(() => assets.value.filter(asset => asset.kind === 'video').length)
-const readyCount = computed(() => assets.value.filter(asset => ['completed', 'complete', 'succeeded', 'done'].includes(String(asset.status).toLowerCase()) && asset.url).length)
+const readyCount = computed(() => assets.value.length)
 
 const filters = computed(() => [
   { value: 'all', label: copy('全部', 'All'), count: assets.value.length },
@@ -178,7 +189,7 @@ const filteredAssets = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return assets.value.filter(asset => {
     const matchesType = activeFilter.value === 'all' || asset.kind === activeFilter.value
-    const matchesQuery = !query || `${asset.title} ${asset.project || ''} ${asset.provider || ''}`.toLowerCase().includes(query)
+    const matchesQuery = !query || `${asset.title} ${asset.project || ''}`.toLowerCase().includes(query)
     return matchesType && matchesQuery
   })
 })

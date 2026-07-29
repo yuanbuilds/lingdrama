@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">LINGDRAMA · PRODUCTION QUEUE</p>
         <h1>{{ copy('任务中心', 'Task Center') }}</h1>
-        <p>{{ copy('追踪所有真实的图像与视频生成任务，快速定位完成、运行中和失败记录。', 'Track real image and video jobs across projects, including completed, active, and failed generations.') }}</p>
+        <p>{{ copy('追踪所有真实的图像与视频生成任务，快速定位完成、运行中和需要处理的记录。', 'Track real image and video jobs across projects, including completed, active, and attention-needed generations.') }}</p>
       </div>
       <div class="hero-actions">
         <span v-if="activeCount" class="live-indicator"><i></i>{{ copy(`${activeCount} 个任务运行中`, `${activeCount} jobs active`) }}</span>
@@ -34,7 +34,7 @@
         </div>
         <label class="search-box">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input v-model="keyword" :placeholder="copy('搜索任务、项目或模型…', 'Search jobs, projects, or models…')" />
+          <input v-model="keyword" :placeholder="copy('搜索任务或项目…', 'Search jobs or projects…')" />
         </label>
       </div>
 
@@ -54,12 +54,12 @@
               <span :class="['status-pill', task.state]"><i></i>{{ stateLabel(task.state) }}</span>
             </div>
             <p>{{ task.project || copy('未关联项目', 'Unassigned project') }}</p>
-            <div v-if="task.error" class="task-error">{{ task.error }}</div>
+            <div v-if="task.error" class="task-error">{{ copy('本次生成未完成，可在制作页重新提交。', 'This generation did not complete. Retry it from the production workspace.') }}</div>
           </div>
           <div class="task-provider">
-            <small>{{ copy('模型服务', 'Provider') }}</small>
-            <strong>{{ task.provider || '—' }}</strong>
-            <span>{{ task.model || copy('默认模型', 'Default model') }}</span>
+            <small>{{ copy('执行引擎', 'Engine') }}</small>
+            <strong>LingDrama</strong>
+            <span>{{ task.kind === 'video' ? copy('动态制作', 'Motion pipeline') : copy('视觉制作', 'Visual pipeline') }}</span>
           </div>
           <div class="task-time">
             <small>{{ copy('耗时', 'Duration') }}</small>
@@ -122,8 +122,6 @@ const tasks = computed(() => {
       title: kind === 'video' ? `${copy('视频生成任务', 'Video generation')} #${row.id}` : `${copy('图像生成任务', 'Image generation')} #${row.id}`,
       dramaId,
       project: projectMap.value.get(dramaId),
-      provider: row.provider,
-      model: row.model,
       state: normalizeState(row.status),
       status: row.status,
       error: valueOf(row, 'error_msg', 'errorMsg'),
@@ -151,7 +149,7 @@ const filteredTasks = computed(() => {
   const query = keyword.value.trim().toLowerCase()
   return tasks.value.filter(task => {
     const matchesState = activeFilter.value === 'all' || task.state === activeFilter.value
-    const matchesQuery = !query || `${task.title} ${task.project || ''} ${task.provider || ''} ${task.model || ''}`.toLowerCase().includes(query)
+    const matchesQuery = !query || `${task.title} ${task.project || ''}`.toLowerCase().includes(query)
     return matchesState && matchesQuery
   })
 })
