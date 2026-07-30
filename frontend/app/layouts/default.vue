@@ -10,7 +10,6 @@
           <span class="brand-title"><b>灵动</b><span>LingDrama</span></span>
           <span class="brand-caption">{{ copy.tagline }}</span>
         </span>
-        <span class="brand-edition">{{ copy.edition }}</span>
       </button>
 
       <nav class="primary-nav" :aria-label="copy.navigation">
@@ -64,7 +63,6 @@ const copy = computed(() => locale.value === 'en-US' ? {
   home: 'LingDrama home',
   navigation: 'Main navigation',
   tagline: 'AI SHORT DRAMA STUDIO',
-  edition: 'SHOWCASE EDITION',
   showcase: 'Showcase',
   projects: 'Projects',
   assets: 'Assets',
@@ -74,7 +72,6 @@ const copy = computed(() => locale.value === 'en-US' ? {
   home: '返回灵动首页',
   navigation: '主导航',
   tagline: 'AI 短剧创作与制片平台',
-  edition: '公开展示版',
   showcase: '成果展厅',
   projects: '项目',
   assets: '资产',
@@ -156,19 +153,6 @@ function isActive(path) {
 .brand-title b { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
 .brand-title span { color: var(--text-2); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
 .brand-caption { margin-top: 5px; color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 0.16em; }
-.brand-edition {
-  margin-left: 2px;
-  padding: 4px 7px;
-  border: 1px solid rgba(102, 210, 255, 0.16);
-  border-radius: 999px;
-  color: rgba(154, 221, 244, 0.76);
-  background: rgba(64, 180, 225, 0.06);
-  font-family: var(--font-mono);
-  font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
 
 .primary-nav {
   display: flex;
@@ -281,7 +265,6 @@ function isActive(path) {
   .app-header { grid-template-columns: auto 1fr auto; gap: 12px; padding: 0 16px; }
   .app-header::after { left: 16px; right: 16px; }
   .brand-copy { display: none; }
-  .brand-edition { display: none; }
   .primary-nav { justify-self: center; }
   .settings-link span { display: none; }
 }
