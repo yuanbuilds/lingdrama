@@ -11,6 +11,8 @@ data/lingdrama.db*
 data/static
 data/storage
 data/*.bak*
+data/backups
+public-proxy
 frontend/.nuxt
 frontend/.output
 frontend/node_modules
