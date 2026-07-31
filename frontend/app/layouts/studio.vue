@@ -47,9 +47,9 @@ import UserMenu from '~/components/UserMenu.vue'
 
 const { locale, localeTitle, toggleLocale } = useLingLocale()
 const copy = computed(() => locale.value === 'en-US' ? {
-  home: 'LingDrama home', navigation: 'Studio navigation', showcase: 'Showcase', projects: 'Projects', assets: 'Assets', tasks: 'Tasks', settings: 'Settings', workspace: 'PRODUCTION WORKSPACE',
+  home: 'LingDrama home', navigation: 'Studio navigation', showcase: 'Productions', projects: 'Projects', assets: 'Assets', tasks: 'Tasks', settings: 'Settings', workspace: 'PRODUCTION WORKSPACE',
 } : {
-  home: '返回灵动首页', navigation: '制作台导航', showcase: '成果展厅', projects: '项目', assets: '资产', tasks: '任务', settings: '设置', workspace: '制作工作台',
+  home: '返回灵动首页', navigation: '制作台导航', showcase: '作品', projects: '项目', assets: '资产', tasks: '任务', settings: '设置', workspace: '制作工作台',
 })
 </script>
 

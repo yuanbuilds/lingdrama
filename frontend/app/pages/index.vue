@@ -283,11 +283,11 @@
 import { toast } from 'vue-sonner'
 import { dramaAPI } from '~/composables/useApi'
 import { useLingLocale } from '~/composables/useLingLocale'
-import { useDemoAuth } from '~/composables/useDemoAuth'
+import { useWorkspaceSession } from '~/composables/useWorkspaceSession'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 const { locale } = useLingLocale()
-const { isAuthenticated } = useDemoAuth()
+const { isAuthenticated } = useWorkspaceSession()
 const dramas = ref([])
 const loading = ref(true)
 const loadError = ref('')
@@ -298,13 +298,13 @@ const styles = ['realistic', 'cinematic', 'anime', 'comic', 'ghibli', 'watercolo
 
 const copy = computed(() => locale.value === 'en-US' ? {
   heroDescription: 'LingDrama turns source material into a coherent short-drama production — from story development and visual assets to shots, video, review, and final delivery.',
-  newProject: 'New production', viewShowcase: 'View results gallery', enterStudio: 'Enter production studio', overview: 'Production overview',
+  newProject: 'New production', viewShowcase: 'View productions', enterStudio: 'Enter production studio', overview: 'Production overview',
   projects: 'Projects', episodes: 'Episodes', assets: 'Assets', finalCuts: 'Final cuts', latestResult: 'LATEST RELEASE', openProject: 'Open production project',
   episodeUnit: 'episodes', characterUnit: 'characters', sceneUnit: 'scenes', visualAssetUnit: 'visuals', productionProgress: 'Production progress',
   productionSystem: 'PRODUCTION SYSTEM', workflowTitle: 'One story. One continuous production chain.',
   workflowDescription: 'Every stage stays connected, so characters, scenes, shots, sound, and delivery remain part of the same production context.',
-  viewAllResults: 'Explore the results gallery',
-  projectLibrary: 'REAL PRODUCTIONS', yourProductions: 'Projects made with LingDrama', projectsDescription: 'Real project records, footage, and production progress from this workspace.', projectUnit: 'projects', deleteProject: 'Delete project',
+  viewAllResults: 'Browse all productions',
+  projectLibrary: 'PRODUCTION LIBRARY', yourProductions: 'LingDrama productions', projectsDescription: 'Manage project records, footage, and production progress in one workspace.', projectUnit: 'projects', deleteProject: 'Delete project',
   awaitingVisuals: 'Visual assets pending', createNext: 'Start another story', createNextDescription: 'Build a new production from source material',
   emptyTitle: 'Your first production starts here', emptyDescription: 'Create a project, add your story, and move from script to final cut in one workspace.', createFirst: 'Create first project',
   createDialog: 'Create drama project', createDescription: 'Set the basic direction. You can refine the script, cast, and visual language inside the workspace.',
@@ -325,13 +325,13 @@ const copy = computed(() => locale.value === 'en-US' ? {
   styleLabels: { realistic: 'Realistic', cinematic: 'Cinematic', anime: 'Anime', comic: 'Graphic novel', ghibli: 'Painterly anime', watercolor: 'Watercolor' },
 } : {
   heroDescription: '灵动 LingDrama 将故事原文变成一条连贯的短剧生产链——从故事开发、视觉资产与分镜，到视频制作、审片和最终交付。',
-  newProject: '新建短剧', viewShowcase: '查看成果展厅', enterStudio: '进入制作空间', overview: '制作概览',
+  newProject: '新建短剧', viewShowcase: '查看作品', enterStudio: '进入制作空间', overview: '制作概览',
   projects: '项目', episodes: '剧集', assets: '生产资产', finalCuts: '成片', latestResult: '最新成果', openProject: '打开制作项目',
   episodeUnit: '集', characterUnit: '角色', sceneUnit: '场景', visualAssetUnit: '视觉资产', productionProgress: '制作进度',
   productionSystem: 'PRODUCTION SYSTEM', workflowTitle: '一个故事，一条完整生产链。',
   workflowDescription: '所有阶段共享同一份创作上下文，让人物、场景、镜头、声音与交付始终保持连接。',
-  viewAllResults: '浏览全部成果',
-  projectLibrary: 'REAL PRODUCTIONS', yourProductions: 'LingDrama 真实制作案例', projectsDescription: '这里展示来自当前制作空间的真实项目、画面与生产进度。', projectUnit: '个项目', deleteProject: '删除项目',
+  viewAllResults: '浏览全部作品',
+  projectLibrary: 'PRODUCTION LIBRARY', yourProductions: 'LingDrama 制作项目', projectsDescription: '统一管理项目、画面资产与生产进度。', projectUnit: '个项目', deleteProject: '删除项目',
   awaitingVisuals: '等待视觉资产', createNext: '开始另一个故事', createNextDescription: '从故事原文建立新的短剧制作项目',
   emptyTitle: '第一部作品，从这里开始', emptyDescription: '创建项目、放入故事，在同一个工作空间里完成从剧本到成片。', createFirst: '创建第一个项目',
   createDialog: '新建短剧项目', createDescription: '先确定基本方向；剧本、角色、风格与镜头都可以在制作工作台里继续完善。',

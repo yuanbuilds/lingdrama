@@ -18,7 +18,7 @@
       <article class="stat-card">
         <span class="stat-kicker">{{ copy('全部素材', 'All assets') }}</span>
         <strong>{{ assets.length }}</strong>
-        <span>{{ copy('真实生成记录', 'real generation records') }}</span>
+        <span>{{ copy('生产记录', 'generation records') }}</span>
       </article>
       <article class="stat-card">
         <span class="stat-kicker">{{ copy('视觉资产', 'Visual assets') }}</span>

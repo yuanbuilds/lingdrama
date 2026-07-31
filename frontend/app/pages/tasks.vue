@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">LINGDRAMA · PRODUCTION QUEUE</p>
         <h1>{{ copy('任务中心', 'Task Center') }}</h1>
-        <p>{{ copy('追踪所有真实的图像与视频生成任务，快速定位完成、运行中和需要处理的记录。', 'Track real image and video jobs across projects, including completed, active, and attention-needed generations.') }}</p>
+        <p>{{ copy('追踪所有图像与视频生成任务，快速定位完成、运行中和需要处理的记录。', 'Track image and video jobs across projects, including completed, active, and attention-needed generations.') }}</p>
       </div>
       <div class="hero-actions">
         <span v-if="activeCount" class="live-indicator"><i></i>{{ copy(`${activeCount} 个任务运行中`, `${activeCount} jobs active`) }}</span>

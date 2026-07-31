@@ -77,7 +77,7 @@
           <div class="frame-vignette"></div>
           <div class="frame-corners"><i></i><i></i><i></i><i></i></div>
           <div class="frame-top">
-            <span>LINGDRAMA / SHOWCASE</span>
+            <span>LINGDRAMA / PRODUCTIONS</span>
             <em v-if="hasFinalMaster"><i></i>{{ copy.masterReady }}</em>
           </div>
           <div class="frame-caption">
@@ -263,17 +263,17 @@ const episodeData = ref({})
 
 const messages = {
   'zh-CN': {
-    loading: '正在生成成果展厅', loadingHint: '同步真实项目、镜头与交付数据…', loadFailed: '成果数据暂时无法载入', retry: '重新载入', noProject: '还没有可展示的项目', noProjectHint: '完成第一个项目后，真实成果会自动呈现在这里。', openProjects: '打开项目中心',
-    realProject: '真实项目成果', heroTitle: '从一段故事，\n到一部可以播放的短剧。', heroLead: 'LingDrama 将剧本、角色、场景、分镜与动态影像连接成一条完整的 AI 短剧生产链。这里展示的每一项数据与画面，都来自正在运行的真实项目。', featuredWork: 'FEATURED PRODUCTION', watchFilm: '观看完整成片', enterWorkspace: '进入制作空间', visualPending: '等待首个真实画面', visualPendingHint: '项目产生视觉资产后，这里会自动更新。', masterReady: '成片已就绪', finalMaster: 'FINAL MASTER', productionPreview: 'PRODUCTION PREVIEW',
-    projectEvidence: 'PROJECT EVIDENCE', dataFromProduction: '数据来自实际生产流程', episodes: '剧集', characters: '角色', scenes: '场景', shots: '分镜', runtime: '成片时长', masters: '交付成片',
-    result: '真实成果', masterTitle: '一条真实完成的短剧成片', masterDescription: '不是概念图，也不是静态界面演示。播放器连接当前项目的真实交付文件，可直接查看最终制作结果。', deliveryReady: 'DELIVERY READY', work: '项目', episode: '剧集', duration: '时长', deliveryFormat: '交付格式', noMaster: '这个项目尚未生成最终成片', noMasterHint: '分镜视频完成合成后，真实交付文件会显示在这里。',
-    visualSequence: '视觉序列', sequenceTitle: '镜头之间，保持同一个故事世界', sequenceDescription: '从当前项目中抽取的真实关键帧，呈现叙事节奏、人物关系与场景连续性。', shot: '镜头', motionReady: '动态镜头', noSequence: '尚无可展示的镜头序列', noSequenceHint: '完成分镜画面生成后，这里会按真实顺序展示。',
-    productionSystem: '生产系统', pipelineTitle: 'AI 短剧全流程能力', pipelineDescription: '从文字理解到最终交付，将复杂制作过程组织为清晰、可追踪的生产阶段。', verifiedInProject: '本项目已验证', availableInWorkspace: '制作空间可用',
+    loading: '正在载入作品', loadingHint: '同步项目、镜头与交付数据…', loadFailed: '作品数据暂时无法载入', retry: '重新载入', noProject: '暂无作品', noProjectHint: '完成首个项目后，作品将自动呈现在这里。', openProjects: '打开项目中心',
+    realProject: '精选作品', heroTitle: '从一段故事，\n到一部可以播放的短剧。', heroLead: 'LingDrama 将剧本、角色、场景、分镜与动态影像连接成一条完整的 AI 短剧生产链，让创作与交付始终保持在同一个项目上下文中。', featuredWork: 'FEATURED PRODUCTION', watchFilm: '观看完整成片', enterWorkspace: '进入制作空间', visualPending: '等待首个画面', visualPendingHint: '项目产生视觉资产后，这里会自动更新。', masterReady: '成片已就绪', finalMaster: 'FINAL MASTER', productionPreview: 'PRODUCTION PREVIEW',
+    projectEvidence: 'PRODUCTION OVERVIEW', dataFromProduction: '项目生产数据', episodes: '剧集', characters: '角色', scenes: '场景', shots: '分镜', runtime: '成片时长', masters: '交付成片',
+    result: '成片交付', masterTitle: '当前项目最终成片', masterDescription: '播放器呈现当前项目的最终交付版本，可直接审看画面、节奏与成片质量。', deliveryReady: 'DELIVERY READY', work: '项目', episode: '剧集', duration: '时长', deliveryFormat: '交付格式', noMaster: '这个项目尚未生成最终成片', noMasterHint: '分镜视频完成合成后，交付文件会显示在这里。',
+    visualSequence: '视觉序列', sequenceTitle: '镜头之间，保持同一个故事世界', sequenceDescription: '从当前项目中抽取的关键帧，呈现叙事节奏、人物关系与场景连续性。', shot: '镜头', motionReady: '动态镜头', noSequence: '尚无可用的镜头序列', noSequenceHint: '完成分镜画面生成后，这里会按镜头顺序呈现。',
+    productionSystem: '生产系统', pipelineTitle: 'AI 短剧全流程能力', pipelineDescription: '从文字理解到最终交付，将复杂制作过程组织为清晰、可追踪的生产阶段。', verifiedInProject: '已完成', availableInWorkspace: '待启动',
     capabilities: [
       ['剧本结构化', '理解故事、整理情节并形成可制作的剧本结构。'],
       ['角色与场景', '提取人物设定、关系与场景世界观，沉淀为项目资产。'],
       ['导演式分镜', '拆解景别、运镜、动作、对白与镜头时长。'],
-      ['视觉关键帧', '根据分镜生成可用于动态制作的真实画面。'],
+      ['视觉关键帧', '根据分镜生成可用于动态制作的视觉关键帧。'],
       ['动态镜头', '将关键画面与导演提示转化为连续视频镜头。'],
       ['合成与交付', '完成字幕、镜头合成、整集拼接与成片输出。'],
     ],
@@ -281,17 +281,17 @@ const messages = {
     closingTitle: '灵感无需停留在想象里。', closingDescription: '灵动 LingDrama，让短剧生产从第一行文字一直走到最后一帧影像。', footerLine: 'AI SHORT DRAMA PRODUCTION STUDIO',
   },
   'en-US': {
-    loading: 'Building the case showcase', loadingHint: 'Syncing real projects, shots and deliverables…', loadFailed: 'Showcase data is temporarily unavailable', retry: 'Reload', noProject: 'No project is ready to showcase', noProjectHint: 'Real results will appear here automatically after the first project is created.', openProjects: 'Open project center',
-    realProject: 'REAL PROJECT RESULT', heroTitle: 'From a single story\nto a drama you can watch.', heroLead: 'LingDrama connects scripts, characters, scenes, storyboards and motion into one complete AI drama production line. Every number and visual shown here comes from a live project.', featuredWork: 'FEATURED PRODUCTION', watchFilm: 'Watch the full film', enterWorkspace: 'Enter production space', visualPending: 'Waiting for the first real visual', visualPendingHint: 'This view updates automatically when the project creates visual assets.', masterReady: 'Master ready', finalMaster: 'FINAL MASTER', productionPreview: 'PRODUCTION PREVIEW',
-    projectEvidence: 'PROJECT EVIDENCE', dataFromProduction: 'Live production data', episodes: 'Episodes', characters: 'Characters', scenes: 'Scenes', shots: 'Shots', runtime: 'Master runtime', masters: 'Masters',
-    result: 'REAL RESULT', masterTitle: 'A finished drama you can actually watch', masterDescription: 'Not a concept image or a static interface demo. This player is connected to the project’s real delivery file and shows the final production result.', deliveryReady: 'DELIVERY READY', work: 'Project', episode: 'Episode', duration: 'Runtime', deliveryFormat: 'Format', noMaster: 'This project has no final master yet', noMasterHint: 'The real delivery file will appear here after shot composition and episode assembly.',
-    visualSequence: 'VISUAL SEQUENCE', sequenceTitle: 'One story world, carried across every shot', sequenceDescription: 'Real keyframes from the current project reveal narrative rhythm, character relationships and visual continuity.', shot: 'Shot', motionReady: 'Motion ready', noSequence: 'No visual sequence to showcase yet', noSequenceHint: 'Real frames will appear in story order after storyboard image generation.',
-    productionSystem: 'PRODUCTION SYSTEM', pipelineTitle: 'The complete AI drama workflow', pipelineDescription: 'From story understanding to final delivery, complex production becomes a clear and traceable sequence.', verifiedInProject: 'Verified in this project', availableInWorkspace: 'Available in workspace',
+    loading: 'Loading productions', loadingHint: 'Syncing projects, shots, and deliverables…', loadFailed: 'Production data is temporarily unavailable', retry: 'Reload', noProject: 'No productions yet', noProjectHint: 'Completed work will appear here after the first project is created.', openProjects: 'Open project center',
+    realProject: 'FEATURED PRODUCTION', heroTitle: 'From a single story\nto a drama you can watch.', heroLead: 'LingDrama connects scripts, characters, scenes, storyboards, and motion into one complete AI drama production line, keeping creation and delivery in a single project context.', featuredWork: 'FEATURED PRODUCTION', watchFilm: 'Watch the full film', enterWorkspace: 'Enter production space', visualPending: 'Waiting for the first visual', visualPendingHint: 'This view updates automatically when the project creates visual assets.', masterReady: 'Master ready', finalMaster: 'FINAL MASTER', productionPreview: 'PRODUCTION PREVIEW',
+    projectEvidence: 'PRODUCTION OVERVIEW', dataFromProduction: 'Project production data', episodes: 'Episodes', characters: 'Characters', scenes: 'Scenes', shots: 'Shots', runtime: 'Master runtime', masters: 'Masters',
+    result: 'FINAL DELIVERY', masterTitle: 'Current project final master', masterDescription: 'Review the current final master directly in the player, including picture, pacing, and delivery quality.', deliveryReady: 'DELIVERY READY', work: 'Project', episode: 'Episode', duration: 'Runtime', deliveryFormat: 'Format', noMaster: 'This project has no final master yet', noMasterHint: 'The delivery file will appear here after shot composition and episode assembly.',
+    visualSequence: 'VISUAL SEQUENCE', sequenceTitle: 'One story world, carried across every shot', sequenceDescription: 'Keyframes from the current project reveal narrative rhythm, character relationships, and visual continuity.', shot: 'Shot', motionReady: 'Motion ready', noSequence: 'No visual sequence is available yet', noSequenceHint: 'Frames will appear in story order after storyboard image generation.',
+    productionSystem: 'PRODUCTION SYSTEM', pipelineTitle: 'The complete AI drama workflow', pipelineDescription: 'From story understanding to final delivery, complex production becomes a clear and traceable sequence.', verifiedInProject: 'Completed', availableInWorkspace: 'Ready to start',
     capabilities: [
       ['Script structure', 'Understand the story, organize the plot and form a production-ready script.'],
       ['Characters & scenes', 'Extract characters, relationships and the visual world into reusable assets.'],
       ['Director storyboards', 'Define framing, movement, action, dialogue and shot duration.'],
-      ['Visual keyframes', 'Generate real frames designed for motion production from each shot.'],
+      ['Visual keyframes', 'Generate motion-ready visual keyframes from each shot.'],
       ['Motion shots', 'Turn key visuals and direction into continuous video shots.'],
       ['Compose & deliver', 'Complete subtitles, shot composition, episode assembly and export.'],
     ],

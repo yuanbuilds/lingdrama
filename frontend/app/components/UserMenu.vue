@@ -27,7 +27,7 @@
             <span class="identity-avatar">灵</span>
             <span>
               <b>{{ copy.name }}</b>
-              <small>demo@lingdrama.ai</small>
+              <small>{{ session?.account || 'studio@lingdrama.ai' }}</small>
             </span>
             <em><i></i>{{ copy.online }}</em>
           </div>
@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { useDemoAuth } from '~/composables/useDemoAuth'
+import { useWorkspaceSession } from '~/composables/useWorkspaceSession'
 import { useLingLocale } from '~/composables/useLingLocale'
 
 defineProps<{ compact?: boolean }>()
@@ -69,15 +69,15 @@ defineProps<{ compact?: boolean }>()
 const route = useRoute()
 const menuRoot = ref<HTMLElement | null>(null)
 const open = ref(false)
-const { isAuthenticated, signOut } = useDemoAuth()
+const { isAuthenticated, session, signOut } = useWorkspaceSession()
 const { locale, toggleLocale } = useLingLocale()
 
 const copy = computed(() => locale.value === 'en-US' ? {
-  signIn: 'Sign in', accountMenu: 'Open account menu', name: 'Demo Admin', workspace: 'Production workspace',
-  online: 'Online', showcase: 'Showcase', settings: 'Settings', language: 'Switch language', signOut: 'Sign out',
+  signIn: 'Sign in', accountMenu: 'Open account menu', name: 'Studio Admin', workspace: 'LingDrama Studio',
+  online: 'Signed in', showcase: 'Productions', settings: 'Settings', language: 'Switch language', signOut: 'Sign out',
 } : {
-  signIn: '登录', accountMenu: '打开用户菜单', name: '演示管理员', workspace: '制作空间',
-  online: '在线', showcase: '成果展厅', settings: '系统设置', language: '切换语言', signOut: '退出登录',
+  signIn: '登录', accountMenu: '打开用户菜单', name: '制作管理员', workspace: '灵动制作中心',
+  online: '已登录', showcase: '作品中心', settings: '系统设置', language: '切换语言', signOut: '退出登录',
 })
 
 const loginTarget = computed(() => ({

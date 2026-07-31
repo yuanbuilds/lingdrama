@@ -1,14 +1,14 @@
-import { safeDemoRedirect, useDemoAuth } from '~/composables/useDemoAuth'
+import { safeWorkspaceRedirect, useWorkspaceSession } from '~/composables/useWorkspaceSession'
 
 export default defineNuxtRouteMiddleware((to) => {
   if (!import.meta.client) return
 
-  const { isAuthenticated, restore } = useDemoAuth()
+  const { isAuthenticated, restore } = useWorkspaceSession()
   restore()
 
   if (to.path === '/login') {
     if (!isAuthenticated.value) return
-    return navigateTo(safeDemoRedirect(to.query.redirect, '/'), { replace: true })
+    return navigateTo(safeWorkspaceRedirect(to.query.redirect, '/'), { replace: true })
   }
 
   const protectedPrefixes = ['/assets', '/tasks', '/settings', '/drama']

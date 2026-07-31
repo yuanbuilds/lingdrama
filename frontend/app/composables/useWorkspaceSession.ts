@@ -1,24 +1,24 @@
 import { computed } from 'vue'
 
-export const DEMO_ACCOUNT = 'demo@lingdrama.ai'
-export const DEMO_PASSWORD = 'LingDrama2026'
+export const WORKSPACE_ACCOUNT = 'studio@lingdrama.ai'
+export const WORKSPACE_PASSWORD = 'LingDrama2026'
 
-const LOCAL_SESSION_KEY = 'lingdrama.demo.session'
-const TAB_SESSION_KEY = 'lingdrama.demo.tab-session'
+const LOCAL_SESSION_KEY = 'lingdrama.workspace.session'
+const TAB_SESSION_KEY = 'lingdrama.workspace.tab-session'
 
-export interface LingDramaDemoSession {
+export interface LingDramaWorkspaceSession {
   version: 1
   account: string
   userId: string
   signedInAt: string
 }
 
-function isValidSession(value: unknown): value is LingDramaDemoSession {
+function isValidSession(value: unknown): value is LingDramaWorkspaceSession {
   if (!value || typeof value !== 'object') return false
-  const session = value as Partial<LingDramaDemoSession>
+  const session = value as Partial<LingDramaWorkspaceSession>
   return session.version === 1
-    && session.account === DEMO_ACCOUNT
-    && session.userId === 'lingdrama-demo-admin'
+    && session.account === WORKSPACE_ACCOUNT
+    && session.userId === 'lingdrama-studio-admin'
     && typeof session.signedInAt === 'string'
 }
 
@@ -33,16 +33,16 @@ function readSession(storage: Storage, key: string) {
   }
 }
 
-export function safeDemoRedirect(value: unknown, fallback = '/') {
+export function safeWorkspaceRedirect(value: unknown, fallback = '/') {
   const target = Array.isArray(value) ? value[0] : value
   if (typeof target !== 'string') return fallback
-  if (!/^\/(?!\/)/.test(target) || target.startsWith('/login')) return fallback
+  if (!/^\/(?!\/)/.test(target) || target.includes('\\') || target.startsWith('/login')) return fallback
   return target
 }
 
-export function useDemoAuth() {
-  const session = useState<LingDramaDemoSession | null>('lingdrama-demo-session', () => null)
-  const ready = useState<boolean>('lingdrama-demo-session-ready', () => false)
+export function useWorkspaceSession() {
+  const session = useState<LingDramaWorkspaceSession | null>('lingdrama-workspace-session', () => null)
+  const ready = useState<boolean>('lingdrama-workspace-session-ready', () => false)
   const isAuthenticated = computed(() => Boolean(session.value))
 
   function restore() {
@@ -53,7 +53,7 @@ export function useDemoAuth() {
     return session.value
   }
 
-  function persist(next: LingDramaDemoSession, remember: boolean) {
+  function persist(next: LingDramaWorkspaceSession, remember: boolean) {
     if (!import.meta.client) return
     localStorage.removeItem(LOCAL_SESSION_KEY)
     sessionStorage.removeItem(TAB_SESSION_KEY)
@@ -63,22 +63,18 @@ export function useDemoAuth() {
 
   function signIn(account: string, password: string, remember = true) {
     const normalizedAccount = String(account || '').trim().toLowerCase()
-    if (normalizedAccount !== DEMO_ACCOUNT || password !== DEMO_PASSWORD) return false
+    if (normalizedAccount !== WORKSPACE_ACCOUNT || password !== WORKSPACE_PASSWORD) return false
 
-    const next: LingDramaDemoSession = {
+    const next: LingDramaWorkspaceSession = {
       version: 1,
-      account: DEMO_ACCOUNT,
-      userId: 'lingdrama-demo-admin',
+      account: WORKSPACE_ACCOUNT,
+      userId: 'lingdrama-studio-admin',
       signedInAt: new Date().toISOString(),
     }
     session.value = next
     ready.value = true
     persist(next, remember)
     return true
-  }
-
-  function enterDemo(remember = true) {
-    return signIn(DEMO_ACCOUNT, DEMO_PASSWORD, remember)
   }
 
   function signOut() {
@@ -97,7 +93,6 @@ export function useDemoAuth() {
     isAuthenticated,
     restore,
     signIn,
-    enterDemo,
     signOut,
   }
 }
