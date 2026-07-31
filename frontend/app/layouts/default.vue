@@ -33,15 +33,12 @@
       </nav>
 
       <div class="header-actions">
-        <NuxtLink to="/settings" class="settings-link" :class="{ active: isActive('/settings') }" :title="copy.settings" :aria-label="copy.settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.05.05-2.88 2.88-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.05.05-2.88-2.88.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.86l-.05-.05 2.88-2.88.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.05-.05 2.88 2.88-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
-          <span class="sr-only">{{ copy.settings }}</span>
-        </NuxtLink>
         <button class="locale-switch" type="button" :title="localeTitle" @click="toggleLocale">
           <span :class="{ active: locale === 'zh-CN' }">中</span>
           <i></i>
           <span :class="{ active: locale === 'en-US' }">EN</span>
         </button>
+        <UserMenu />
       </div>
     </header>
 
@@ -54,6 +51,7 @@
 <script setup>
 import brandLogo from '~/assets/lingdrama-logo.svg'
 import { useLingLocale } from '~/composables/useLingLocale'
+import UserMenu from '~/components/UserMenu.vue'
 
 const route = useRoute()
 const showBrandImage = ref(true)

@@ -28,12 +28,10 @@
 
       <div class="studio-shell-actions">
         <span class="workspace-label">{{ copy.workspace }}</span>
-        <NuxtLink to="/settings" class="studio-settings" :title="copy.settings" :aria-label="copy.settings">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.05.05-2.88 2.88-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21h-4v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.05.05-2.88-2.88.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.86l-.05-.05 2.88-2.88.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3h4v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.05-.05 2.88 2.88-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21v4h-.05a1.7 1.7 0 0 0-1.55 1Z"/></svg>
-        </NuxtLink>
         <button class="studio-locale" type="button" :title="localeTitle" @click="toggleLocale">
           {{ locale === 'zh-CN' ? 'EN' : '中' }}
         </button>
+        <UserMenu compact />
       </div>
     </header>
     <div class="studio-stage">
@@ -45,6 +43,7 @@
 <script setup>
 import brandLogo from '~/assets/lingdrama-logo.svg'
 import { useLingLocale } from '~/composables/useLingLocale'
+import UserMenu from '~/components/UserMenu.vue'
 
 const { locale, localeTitle, toggleLocale } = useLingLocale()
 const copy = computed(() => locale.value === 'en-US' ? {

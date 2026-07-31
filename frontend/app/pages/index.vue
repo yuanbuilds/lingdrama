@@ -158,7 +158,7 @@
           </div>
           <div class="section-meta">
             <span>{{ dramas.length }} {{ unitLabel('project', dramas.length) }}</span>
-            <button class="icon-create" type="button" :title="copy.newProject" @click="showCreate = true">
+            <button v-if="isAuthenticated" class="icon-create" type="button" :title="copy.newProject" @click="showCreate = true">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </button>
           </div>
@@ -185,7 +185,7 @@
               </div>
               <div class="media-shade"></div>
               <span class="stage-pill"><i></i>{{ projectStage(drama) }}</span>
-              <button class="delete-button" type="button" :title="copy.deleteProject" @click.stop="delDrama(drama)">
+              <button v-if="isAuthenticated" class="delete-button" type="button" :title="copy.deleteProject" @click.stop="delDrama(drama)">
                 <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>
               </button>
               <span class="project-number">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -210,7 +210,7 @@
             </div>
           </article>
 
-          <button class="new-project-card" type="button" @click="showCreate = true">
+          <button v-if="isAuthenticated" class="new-project-card" type="button" @click="showCreate = true">
             <span class="new-project-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
             <strong>{{ copy.createNext }}</strong>
             <small>{{ copy.createNextDescription }}</small>
@@ -223,7 +223,9 @@
           </div>
           <h3>{{ copy.emptyTitle }}</h3>
           <p>{{ copy.emptyDescription }}</p>
-          <button class="btn btn-primary" type="button" @click="showCreate = true">{{ copy.createFirst }}</button>
+          <button class="btn btn-primary" type="button" @click="isAuthenticated ? showCreate = true : enterStudio()">
+            {{ isAuthenticated ? copy.createFirst : copy.enterStudio }}
+          </button>
         </div>
       </section>
     </div>
@@ -281,9 +283,11 @@
 import { toast } from 'vue-sonner'
 import { dramaAPI } from '~/composables/useApi'
 import { useLingLocale } from '~/composables/useLingLocale'
+import { useDemoAuth } from '~/composables/useDemoAuth'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 const { locale } = useLingLocale()
+const { isAuthenticated } = useDemoAuth()
 const dramas = ref([])
 const loading = ref(true)
 const loadError = ref('')
@@ -396,6 +400,10 @@ async function load() {
 }
 
 async function create() {
+  if (!isAuthenticated.value) {
+    await requireSession('/assets')
+    return
+  }
   if (!form.value.title.trim() || creating.value) return
   creating.value = true
   try {
@@ -410,6 +418,10 @@ async function create() {
 }
 
 async function delDrama(drama) {
+  if (!isAuthenticated.value) {
+    await requireSession(`/drama/${drama.id}`)
+    return
+  }
   if (!confirm(copy.value.confirmDelete(drama.title))) return
   try {
     await dramaAPI.del(drama.id)
@@ -426,15 +438,18 @@ function closeCreate() {
 }
 
 function openProject(drama) {
-  navigateTo(`/drama/${drama.id}`)
+  requireSession(`/drama/${drama.id}`)
 }
 
 function enterStudio() {
-  if (featured.value) {
-    openProject(featured.value)
-    return
-  }
-  showCreate.value = true
+  if (featured.value) return requireSession(`/drama/${featured.value.id}`)
+  if (isAuthenticated.value) showCreate.value = true
+  else requireSession('/assets')
+}
+
+function requireSession(path) {
+  if (isAuthenticated.value) return navigateTo(path)
+  return navigateTo({ path: '/login', query: { redirect: path } })
 }
 
 function scrollProjects() {
