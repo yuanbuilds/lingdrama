@@ -46,7 +46,7 @@ export function createGridPromptTools(episodeId: number, dramaId: number) {
     execute: async ({ character_id }) => {
       const [c] = db.select().from(schema.characters)
         .where(eq(schema.characters.id, character_id)).all()
-      if (!c) return { error: 'Character not found' }
+      if (!c || c.dramaId !== dramaId || c.deletedAt) return { error: 'Character not found' }
 
       const parts: string[] = []
       if (c.appearance) parts.push(c.appearance)
@@ -95,7 +95,7 @@ export function createGridPromptTools(episodeId: number, dramaId: number) {
     execute: async ({ scene_id }) => {
       const [s] = db.select().from(schema.scenes)
         .where(eq(schema.scenes.id, scene_id)).all()
-      if (!s) return { error: 'Scene not found' }
+      if (!s || s.dramaId !== dramaId || s.deletedAt) return { error: 'Scene not found' }
 
       const parts: string[] = []
       if (s.location) parts.push(s.location)

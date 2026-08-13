@@ -80,7 +80,7 @@
                       <span class="config-name">{{ c.name || `${c.provider}-${c.service_type}` }}</span>
                     </div>
                     <span class="config-model mono truncate">{{ fmtModel(c.model) }}</span>
-                    <span class="config-base mono truncate">{{ c.base_url || '未设置 Base URL' }}</span>
+                    <span class="config-base mono truncate">连接参数已安全托管</span>
                   </div>
                 </div>
                 <span :class="['tag', c.has_api_key ? 'tag-success' : 'tag-error']">{{ c.has_api_key ? '已配置' : '无密钥' }}</span>
@@ -294,8 +294,7 @@
             <span class="tag" :class="cfgTestResult.reachable ? 'tag-success' : 'tag-error'">{{ cfgTestResult.status || 'ERROR' }}</span>
             <span>{{ cfgTestResult.message }}</span>
           </div>
-          <div class="mono test-result-url">{{ cfgTestResult.method }} {{ cfgTestResult.url }}</div>
-          <div v-if="cfgTestResult.response_preview" class="mono test-result-preview">{{ cfgTestResult.response_preview }}</div>
+          <div class="mono test-result-url">{{ cfgTestResult.method }} · 安全连接检查</div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" :disabled="cfgTesting" @click="testDraftCfg">
@@ -442,7 +441,7 @@ function startEditCfg(c) {
     name: c.name || '',
     provider: c.provider,
     api_key: '',
-    base_url: c.base_url || '',
+    base_url: '',
     modelStr: fmtModel(c.model),
     service_type: c.service_type,
     priority: c.priority ?? 0,
@@ -471,13 +470,12 @@ async function testDraftCfg() {
   })
 }
 async function testExistingCfg(c) {
-  startEditCfg(c)
+  cfgTestResult.value = null
   await testCfgPayload({
     service_type: c.service_type,
     provider: c.provider,
     api_key: '',
     config_id: c.id,
-    base_url: c.base_url || '',
     model: Array.isArray(c.model) ? c.model : [],
   })
 }
@@ -485,7 +483,7 @@ async function saveCfg() {
   if (!cfgForm.provider) { toast.warning('选择服务商'); return }
   const models = cfgForm.modelStr.split(',').map(s => s.trim()).filter(Boolean)
   try {
-    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, ...(cfgForm.api_key ? { api_key: cfgForm.api_key } : {}), base_url: cfgForm.base_url, model: models, priority: cfgForm.priority })
+    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, ...(cfgForm.api_key ? { api_key: cfgForm.api_key } : {}), ...(cfgForm.base_url ? { base_url: cfgForm.base_url } : {}), model: models, priority: cfgForm.priority })
     else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority })
     cfgDialog.value = false; toast.success('已保存'); loadCfgs()
   } catch (e) { toast.error(e.message) }

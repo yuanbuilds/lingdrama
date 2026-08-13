@@ -3,18 +3,37 @@
  * Vidu 在任务完成后会 POST 到此端点通知结果
  */
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, badRequest } from '../utils/response.js'
 import { downloadFile } from '../utils/storage.js'
 import { ViduVideoAdapter } from '../services/adapters/vidu-video'
 import { logTaskError, logTaskProgress, logTaskSuccess, logTaskWarn } from '../utils/task-logger.js'
+import { createHash, timingSafeEqual } from 'node:crypto'
+import { resolveSecret } from '../services/secrets.js'
 
 const app = new Hono()
+
+function secureEqual(left: string, right: string) {
+  const leftHash = createHash('sha256').update(left).digest()
+  const rightHash = createHash('sha256').update(right).digest()
+  return timingSafeEqual(leftHash, rightHash)
+}
+
+function authorizeWebhook(c: Context) {
+  const expected = resolveSecret(process.env.LINGDRAMA_VIDU_WEBHOOK_SECRET)
+  if (!expected) return process.env.NODE_ENV !== 'production'
+  const provided = c.req.header('x-lingdrama-webhook-secret')
+    || c.req.header('authorization')?.replace(/^Bearer\s+/i, '')
+    || ''
+  return secureEqual(provided, expected)
+}
 
 // POST /webhooks/vidu
 // Vidu 回调格式: { task_id, state, video_url, ... }
 app.post('/vidu', async (c) => {
+  if (!authorizeWebhook(c)) return c.json({ code: 401, message: 'Unauthorized webhook' }, 401)
   const body = await c.req.json()
   const { task_id, state, video_url, error } = body
   logTaskProgress('Webhook', 'vidu-callback', {

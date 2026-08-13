@@ -342,7 +342,7 @@ const capabilities = computed(() => copy.value.capabilities.map(([title, descrip
   title,
   description,
   verified: [
-    episodes.value.some(ep => ep.script_content || ep.scriptContent),
+    episodes.value.some(ep => ep.script_ready || ep.scriptReady || ep.script_content || ep.scriptContent),
     characters.value.length > 0 && scenes.value.length > 0,
     shotCount.value > 0,
     imagesReady.value > 0,
@@ -380,7 +380,8 @@ async function load() {
   try {
     const response = await dramaAPI.list()
     const projects = Array.isArray(response) ? response : (response?.items || [])
-    const candidate = projects.find(item => item.production_summary?.final_ready || item.preview_video)
+    const candidate = projects.find(item => /^(?:第)?\s*59\s*秒|the\s*59(?:th)?\s*second/i.test(String(item?.title || '').trim()))
+      || projects.find(item => item.production_summary?.final_ready || item.preview_video)
       || projects.find(item => Number(item.production_summary?.shots || 0) > 0)
       || projects[0]
     if (!candidate) {

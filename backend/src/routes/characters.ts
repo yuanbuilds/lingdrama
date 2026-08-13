@@ -13,7 +13,7 @@ app.put('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json()
   const updates: Record<string, any> = { updatedAt: now() }
-  for (const key of ['name', 'role', 'description', 'appearance', 'personality', 'voiceStyle', 'voiceProvider', 'imageUrl', 'localPath']) {
+  for (const key of ['name', 'role', 'description', 'appearance', 'personality', 'voiceStyle', 'voiceProvider']) {
     const snakeKey = key.replace(/[A-Z]/g, m => '_' + m.toLowerCase())
     if (snakeKey in body) updates[key] = body[snakeKey]
     else if (key in body) updates[key] = body[key]
@@ -43,6 +43,7 @@ app.post('/:id/generate-voice-sample', async (c) => {
 
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
+  if (ep.dramaId !== char.dramaId) return badRequest(c, 'Character and episode must belong to the same project')
 
   try {
     logTaskStart('VoiceSample', 'generate', { characterId: id, characterName: char.name, episodeId: ep.id, voice: char.voiceStyle })
@@ -68,6 +69,7 @@ app.post('/:id/generate-image', async (c) => {
 
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
+  if (ep.dramaId !== char.dramaId) return badRequest(c, 'Character and episode must belong to the same project')
 
   const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, 高质量, 正面, 白色背景`
   try {
@@ -92,6 +94,7 @@ app.post('/batch-generate-images', async (c) => {
   for (const cid of ids) {
     const [char] = db.select().from(schema.characters).where(eq(schema.characters.id, cid)).all()
     if (!char) continue
+    if (char.dramaId !== ep.dramaId) return badRequest(c, 'All characters must belong to the episode project')
     const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, 高质量, 正面, 白色背景`
     try {
       const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, configId: ep.imageConfigId ?? undefined })

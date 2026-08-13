@@ -10,15 +10,13 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { now } from '../utils/response.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { resolveStoragePath } from '../utils/storage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STORAGE_ROOT = process.env.STORAGE_PATH || path.resolve(__dirname, '../../../data/static')
-const DATA_ROOT = path.resolve(__dirname, '../../../data')
 
 function toAbsPath(relativePath: string): string {
-  if (path.isAbsolute(relativePath)) return relativePath
-  if (relativePath.startsWith('static/')) return path.join(DATA_ROOT, relativePath)
-  return path.join(STORAGE_ROOT, relativePath)
+  return resolveStoragePath(relativePath, { mustExist: true })
 }
 
 /**

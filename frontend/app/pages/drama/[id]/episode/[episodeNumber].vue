@@ -1785,7 +1785,8 @@ function openShotForReview(sb) {
 function configLabel(config) {
   if (!config) return '未配置'
   let modelName = ''
-  try { const m = JSON.parse(config.model || '[]'); modelName = Array.isArray(m) ? (m[0] || '') : (m || '') } catch { modelName = config.model || '' }
+  if (Array.isArray(config.model)) modelName = config.model[0] || ''
+  else try { const m = JSON.parse(config.model || '[]'); modelName = Array.isArray(m) ? (m[0] || '') : (m || '') } catch { modelName = config.model || '' }
   return modelName ? `${config.name} · ${modelName} (${config.provider})` : `${config.name} (${config.provider})`
 }
 
@@ -2957,8 +2958,8 @@ function getShotReferenceImages(sb) {
     const char = chars.value.find(item => item.id === charId)
     pushRef(char?.image_url || char?.imageUrl)
   }
-  for (const ref of getRefs(sb)) {
-    pushRef(ref)
+  for (const referenceImage of getRefs(sb)) {
+    pushRef(referenceImage)
   }
   const first = getFirstFrame(sb)
   const last = getLastFrame(sb)

@@ -13,12 +13,34 @@ function isMaskedApiKey(value: unknown) {
   return /^\*{3,}$/.test(String(value || '').trim())
 }
 
+function parsedModels(value: unknown) {
+  if (Array.isArray(value)) return value
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(String(value))
+    return Array.isArray(parsed) ? parsed : [String(parsed)]
+  } catch {
+    return [String(value)]
+  }
+}
+
 function publicConfig(row: any) {
   return {
-    ...toSnakeCase(row),
-    api_key: row.apiKey ? '***' : '',
+    id: row.id,
+    service_type: row.serviceType,
+    provider: row.provider,
+    name: row.serviceType === 'text'
+      ? 'LingDrama Intelligence'
+      : row.serviceType === 'image'
+        ? 'LingDrama Visual'
+        : row.serviceType === 'video'
+          ? 'LingDrama Motion'
+          : 'LingDrama Voice',
     has_api_key: Boolean(row.apiKey),
-    model: row.model ? JSON.parse(row.model) : [],
+    model: parsedModels(row.model),
+    priority: row.priority,
+    is_default: Boolean(row.isDefault),
+    is_active: Boolean(row.isActive),
   }
 }
 
@@ -125,7 +147,7 @@ app.get('/', async (c) => {
   let rows = db.select().from(schema.aiServiceConfigs).all()
   if (serviceType) rows = rows.filter(r => r.serviceType === serviceType)
 
-  const parsed = rows.map(publicConfig)
+  const parsed = rows.map(row => publicConfig(row))
   return success(c, parsed)
 })
 
@@ -161,21 +183,28 @@ app.post('/', async (c) => {
 // POST /ai-configs/test
 app.post('/test', async (c) => {
   const body = await c.req.json()
-  if (!body.service_type || !body.provider || !body.base_url) {
-    return badRequest(c, 'service_type, provider and base_url are required')
+  const stored = body.config_id
+    ? db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, Number(body.config_id))).get()
+    : null
+  const serviceType = body.service_type || stored?.serviceType
+  const provider = body.provider || stored?.provider
+  const baseUrl = body.base_url || stored?.baseUrl
+  if (!serviceType || !provider || !baseUrl) {
+    return badRequest(c, 'service_type, provider and base_url (or config_id) are required')
   }
 
-  const model = Array.isArray(body.model) ? body.model[0] : body.model
+  const storedModels = parsedModels(stored?.model)
+  const model = (Array.isArray(body.model) ? body.model[0] : body.model) || storedModels[0]
   let apiKey = body.api_key
-  if ((!apiKey || isMaskedApiKey(apiKey)) && body.config_id) {
-    apiKey = getConfigById(Number(body.config_id))?.apiKey || ''
+  if (!apiKey || isMaskedApiKey(apiKey)) {
+    apiKey = stored ? getConfigById(stored.id)?.apiKey || '' : ''
   }
-  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, apiKey)
+  const probe = buildProbe(serviceType, provider, baseUrl, model, apiKey)
   const probeUrl = redactUrl(probe.url)
 
   logTaskProgress('AIConfig', 'probe-start', {
-    serviceType: body.service_type,
-    provider: body.provider,
+    serviceType,
+    provider,
     method: probe.method,
     url: probeUrl,
   })
@@ -194,21 +223,19 @@ app.post('/test', async (c) => {
       status: resp.status,
       status_text: resp.statusText,
       method: probe.method,
-      url: probeUrl,
       message: reachable
         ? (resp.ok ? '端点可访问，认证与路径基本正常' : '端点已响应，请根据状态码判断认证或路径是否正确')
         : '端点未按预期响应，请检查 Base URL 和代理前缀',
-      response_preview: text.slice(0, 240),
     }
     if (reachable) {
       logTaskSuccess('AIConfig', 'probe-done', {
-        provider: body.provider,
+        provider,
         status: resp.status,
         url: probeUrl,
       })
     } else {
       logTaskError('AIConfig', 'probe-unexpected', {
-        provider: body.provider,
+        provider,
         status: resp.status,
         url: probeUrl,
       })
@@ -216,7 +243,7 @@ app.post('/test', async (c) => {
     return success(c, payload)
   } catch (error: any) {
     logTaskError('AIConfig', 'probe-failed', {
-      provider: body.provider,
+      provider,
       url: probeUrl,
       error: error.message,
     })
@@ -224,9 +251,7 @@ app.post('/test', async (c) => {
       ok: false,
       reachable: false,
       method: probe.method,
-      url: probeUrl,
       message: error.message || '请求失败',
-      response_preview: '',
     })
   }
 })

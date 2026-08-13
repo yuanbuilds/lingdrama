@@ -5,6 +5,8 @@ import { success, badRequest } from '../utils/response.js'
 import { mergeEpisodeVideos } from '../services/ffmpeg-merge.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { getAuthOrNull } from '../security/auth.js'
+import { publicMergeRecord } from '../security/public-production.js'
 
 const app = new Hono()
 
@@ -35,7 +37,7 @@ app.get('/episodes/:id/merge', async (c) => {
   const latest = merges[merges.length - 1]
   if (!latest) return success(c, null)
 
-  return success(c, toSnakeCase(latest))
+  return success(c, getAuthOrNull(c) ? toSnakeCase(latest) : publicMergeRecord(latest))
 })
 
 export default app

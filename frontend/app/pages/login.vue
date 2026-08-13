@@ -86,6 +86,7 @@
                 autocomplete="username"
                 :placeholder="copy.accountPlaceholder"
                 :aria-invalid="Boolean(errorMessage)"
+                required
                 @input="clearError"
               />
             </div>
@@ -101,6 +102,7 @@
                 autocomplete="current-password"
                 :placeholder="copy.passwordPlaceholder"
                 :aria-invalid="Boolean(errorMessage)"
+                required
                 @input="clearError"
               />
               <button class="password-toggle" type="button" :aria-label="showPassword ? copy.hidePassword : copy.showPassword" @click="showPassword = !showPassword">
@@ -173,7 +175,8 @@ const copy = computed(() => locale.value === 'en-US' ? {
   latestRelease: 'LATEST RELEASE', ready: 'READY TO DELIVER', inProduction: 'IN PRODUCTION', episodes: 'EPISODES', characters: 'CHARACTERS', shots: 'SHOTS', workflow: 'Production workflow',
   stages: ['Story', 'World', 'Shots', 'Video', 'Delivery'], workspaceOnline: 'System operational', welcome: 'Sign in to LingDrama', signInDescription: 'Continue with your work account.',
   account: 'Account', accountPlaceholder: 'Account or email', password: 'Password', passwordPlaceholder: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', remember: 'Stay signed in',
-  signIn: 'Sign in', entering: 'Signing in…', invalid: 'Incorrect account or password. Please try again.',
+  signIn: 'Sign in', entering: 'Signing in…', invalid: 'Incorrect account or password. Please try again.', unavailable: 'The sign-in service is temporarily unavailable. Please try again shortly.',
+  required: 'Enter your account and password to continue.',
   accessTitle: 'LingDrama Production Center', accessDescription: 'Accounts are managed by your organization administrator.', accessBadge: 'ORG WORKSPACE', accountHelp: 'For account access or password assistance, contact your system administrator.', backHome: 'Back to home', footer: 'AI SHORT DRAMA PRODUCTION STUDIO',
 } : {
   home: '返回灵动首页', tagline: 'AI 短剧创作与制片平台', storyTitle: '从故事原文，\n到可交付短剧。',
@@ -181,7 +184,8 @@ const copy = computed(() => locale.value === 'en-US' ? {
   latestRelease: '最新成果 / LATEST RELEASE', ready: '可交付', inProduction: '制作中', episodes: '剧集', characters: '角色', shots: '镜头', workflow: '短剧生产流程',
   stages: ['故事', '世界', '分镜', '视频', '交付'], workspaceOnline: '系统服务正常', welcome: '登录灵动工作台', signInDescription: '使用您的工作账号继续',
   account: '账号', accountPlaceholder: '请输入账号或邮箱', password: '密码', passwordPlaceholder: '请输入密码', showPassword: '显示密码', hidePassword: '隐藏密码', remember: '保持登录状态',
-  signIn: '登录', entering: '正在登录…', invalid: '账号或密码不正确，请重新输入。',
+  signIn: '登录', entering: '正在登录…', invalid: '账号或密码不正确，请重新输入。', unavailable: '登录服务暂时不可用，请稍后重试。',
+  required: '请输入账号和密码后继续。',
   accessTitle: '灵动制作中心', accessDescription: '工作账号由组织管理员统一分配', accessBadge: '组织工作空间', accountHelp: '如需开通账号或重置密码，请联系系统管理员。', backHome: '返回首页', footer: 'AI SHORT DRAMA PRODUCTION STUDIO',
 })
 
@@ -211,23 +215,41 @@ function clearError() {
   errorMessage.value = ''
 }
 
-function destination() {
-  const fallback = featuredProject.value?.id ? `/drama/${featuredProject.value.id}` : '/assets'
-  return safeWorkspaceRedirect(route.query.redirect, fallback)
+async function destination() {
+  const target = safeWorkspaceRedirect(route.query.redirect, '/')
+  const projectMatch = target.match(/^\/drama\/(\d+)(?:\/|$)/)
+  if (!projectMatch) return target
+
+  // Public calls-to-action may point at the featured production. After sign-in,
+  // keep that deep link only when the active workspace can actually access it.
+  // This prevents a customer account from landing on another workspace's 404.
+  try {
+    const response = await dramaAPI.list()
+    const projects = Array.isArray(response) ? response : (response?.items || [])
+    if (projects.some((project: any) => Number(project.id) === Number(projectMatch[1]))) return target
+  } catch {
+    // The project index is the stable recovery route if access cannot be proven.
+  }
+  return '/'
 }
 
 async function finishEntry() {
-  await navigateTo(destination(), { replace: true })
+  await navigateTo(await destination(), { replace: true })
 }
 
 async function submit() {
   if (busy.value) return
   clearError()
+  if (!form.account.trim() || !form.password) {
+    errorMessage.value = copy.value.required
+    return
+  }
   busy.value = true
-  const accepted = signIn(form.account, form.password, form.remember)
-  if (!accepted) {
-    await new Promise(resolve => setTimeout(resolve, 180))
-    errorMessage.value = copy.value.invalid
+  const result = await signIn(form.account, form.password, form.remember)
+  if (!result.ok) {
+    errorMessage.value = /network|fetch|service|endpoint|503|502|500/i.test(result.message)
+      ? copy.value.unavailable
+      : copy.value.invalid
     busy.value = false
     return
   }
@@ -238,7 +260,8 @@ async function loadFeature() {
   try {
     const response = await dramaAPI.list()
     const projects = Array.isArray(response) ? response : (response?.items || [])
-    featuredProject.value = projects.find((project: any) => project.production_summary?.final_ready || project.preview_video)
+    featuredProject.value = projects.find((project: any) => /^(?:第)?\s*59\s*秒|the\s*59(?:th)?\s*second/i.test(String(project?.title || '').trim()))
+      || projects.find((project: any) => project.production_summary?.final_ready || project.preview_video)
       || projects.find((project: any) => Number(project.production_summary?.shots || 0) > 0)
       || projects[0]
       || null

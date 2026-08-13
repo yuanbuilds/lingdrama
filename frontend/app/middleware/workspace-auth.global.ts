@@ -1,14 +1,17 @@
-import { safeWorkspaceRedirect, useWorkspaceSession } from '~/composables/useWorkspaceSession'
+import { useWorkspaceSession } from '~/composables/useWorkspaceSession'
 
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   if (!import.meta.client) return
 
-  const { isAuthenticated, restore } = useWorkspaceSession()
-  restore()
+  const { isAuthenticated, canManageSettings, restore } = useWorkspaceSession()
+  await restore()
 
   if (to.path === '/login') {
     if (!isAuthenticated.value) return
-    return navigateTo(safeWorkspaceRedirect(to.query.redirect, '/'), { replace: true })
+    // A redirect captured before authentication may reference a project from a
+    // different workspace. The login page validates deep links after sign-in;
+    // an already authenticated visitor gets the safe project index instead.
+    return navigateTo('/', { replace: true })
   }
 
   const protectedPrefixes = ['/assets', '/tasks', '/settings', '/drama']
@@ -21,5 +24,9 @@ export default defineNuxtRouteMiddleware((to) => {
       path: '/login',
       query: { redirect: to.fullPath },
     }, { replace: true })
+  }
+
+  if (to.path.startsWith('/settings') && !canManageSettings.value) {
+    return navigateTo('/', { replace: true })
   }
 })

@@ -13,20 +13,20 @@
       </button>
 
       <nav class="primary-nav" :aria-label="copy.navigation">
-        <NuxtLink to="/showcase" class="nav-link nav-link-showcase" :class="{ active: isActive('/showcase') }">
+        <NuxtLink to="/showcase" class="nav-link nav-link-showcase" :class="{ active: isActive('/showcase') }" :aria-label="copy.showcase">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4z"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 2.8h8M9 21.2h6"/></svg>
           <span>{{ copy.showcase }}</span>
           <i class="showcase-signal"></i>
         </NuxtLink>
-        <NuxtLink to="/" class="nav-link" :class="{ active: isActive('/') }">
+        <NuxtLink to="/" class="nav-link" :class="{ active: isActive('/') }" :aria-label="copy.projects">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>{{ copy.projects }}</span>
         </NuxtLink>
-        <NuxtLink to="/assets" class="nav-link" :class="{ active: isActive('/assets') }">
+        <NuxtLink to="/assets" class="nav-link" :class="{ active: isActive('/assets') }" :aria-label="copy.assets">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.1-2.1L20 19"/></svg>
           <span>{{ copy.assets }}</span>
         </NuxtLink>
-        <NuxtLink to="/tasks" class="nav-link" :class="{ active: isActive('/tasks') }">
+        <NuxtLink to="/tasks" class="nav-link" :class="{ active: isActive('/tasks') }" :aria-label="copy.tasks">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>
           <span>{{ copy.tasks }}</span>
         </NuxtLink>

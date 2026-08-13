@@ -22,3 +22,8 @@ temp
 .superpowers
 .claude
 .playwright-cli
+.deploy-secrets
+secrets
+.env
+.env.*
+output

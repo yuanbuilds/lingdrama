@@ -353,7 +353,8 @@ const copy = computed(() => locale.value === 'en-US' ? {
 })
 
 const styleSelectOptions = computed(() => styles.map(style => ({ label: copy.value.styleLabels[style], value: style })))
-const featured = computed(() => dramas.value[0] || null)
+const isFlagship = drama => /^(?:第)?\s*59\s*秒|the\s*59(?:th)?\s*second/i.test(String(drama?.title || '').trim())
+const featured = computed(() => dramas.value.find(isFlagship) || dramas.value[0] || null)
 const stats = computed(() => dramas.value.reduce((result, drama) => {
   result.projects += 1
   result.episodes += drama.episodes?.length || 0

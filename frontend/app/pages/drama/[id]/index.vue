@@ -604,7 +604,8 @@ function pausePreview(event) { event.currentTarget.pause?.() }
 function configLabel(config) {
   if (!config) return ''
   let modelName = ''
-  try { const model = JSON.parse(config.model || '[]'); modelName = Array.isArray(model) ? (model[0] || '') : (model || '') } catch { modelName = config.model || '' }
+  if (Array.isArray(config.model)) modelName = config.model[0] || ''
+  else try { const model = JSON.parse(config.model || '[]'); modelName = Array.isArray(model) ? (model[0] || '') : (model || '') } catch { modelName = config.model || '' }
   return modelName ? `${config.name} · ${modelName}` : `${config.name} · ${config.provider}`
 }
 const imageConfigOptions = computed(() => imageConfigs.value.map(config => ({ label: configLabel(config), value: config.id })))

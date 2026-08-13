@@ -1,6 +1,6 @@
 <template>
   <div ref="menuRoot" class="user-menu" :class="{ compact }">
-    <NuxtLink v-if="!isAuthenticated" :to="loginTarget" class="sign-in-link">
+    <NuxtLink v-if="!isAuthenticated" :to="loginTarget" class="sign-in-link" :aria-label="copy.signIn">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/><path d="M4 20c.8-3.5 3.1-5.5 7-5.5 2.1 0 3.8.6 5 1.8M18 10v6m-3-3h6"/></svg>
       <span>{{ copy.signIn }}</span>
     </NuxtLink>
@@ -13,10 +13,14 @@
         :aria-expanded="open"
         @click="open = !open"
       >
-        <span class="avatar">灵<i></i></span>
+        <span class="avatar">
+          <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" />
+          <span v-else>{{ initials }}</span>
+          <i></i>
+        </span>
         <span class="account-copy">
-          <b>{{ copy.name }}</b>
-          <small>{{ copy.workspace }}</small>
+          <b>{{ currentUser?.name }}</b>
+          <small>{{ currentWorkspace?.name || copy.workspace }}</small>
         </span>
         <svg class="chevron" :class="{ rotated: open }" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
       </button>
@@ -24,12 +28,48 @@
       <Transition name="menu-pop">
         <div v-if="open" class="account-popover" role="menu">
           <div class="identity-card">
-            <span class="identity-avatar">灵</span>
+            <span class="identity-avatar">
+              <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" />
+              <span v-else>{{ initials }}</span>
+            </span>
             <span>
-              <b>{{ copy.name }}</b>
-              <small>{{ session?.account || 'studio@lingdrama.ai' }}</small>
+              <b>{{ currentUser?.name }}</b>
+              <small>{{ currentUser?.account }}</small>
             </span>
             <em><i></i>{{ copy.online }}</em>
+          </div>
+
+          <div class="workspace-card">
+            <span class="workspace-mark"><i></i><i></i><i></i></span>
+            <span>
+              <small>{{ copy.currentWorkspace }}</small>
+              <b>{{ currentWorkspace?.name || copy.workspace }}</b>
+            </span>
+            <em>{{ currentWorkspace?.region || currentUser?.region }}</em>
+          </div>
+
+          <div v-if="canManageSettings && workspaces.length > 1" class="workspace-switcher">
+            <span>{{ copy.switchWorkspace }}</span>
+            <button
+              v-for="workspace in workspaces"
+              :key="workspace.id"
+              type="button"
+              :class="{ active: String(workspace.id) === String(currentWorkspace?.id) }"
+              :disabled="switchingWorkspace"
+              @click="changeWorkspace(workspace.id)"
+            >
+              <i>{{ workspaceInitial(workspace.name) }}</i>
+              <span><b>{{ workspace.name }}</b><small>{{ workspace.region }}<template v-if="workspace.role"> · {{ workspaceRole(workspace.role) }}</template></small></span>
+              <em v-if="String(workspace.id) === String(currentWorkspace?.id)">✓</em>
+            </button>
+          </div>
+
+          <div class="identity-meta">
+            <span>{{ copy.role }}</span><b>{{ roleLabel }}</b>
+            <span>{{ copy.region }}</span><b>{{ currentWorkspace?.region || currentUser?.region }}</b>
+            <template v-for="metric in usageMetrics" :key="metric.label">
+              <span>{{ metric.label }}</span><b>{{ metric.value }}</b>
+            </template>
           </div>
 
           <div class="menu-section">
@@ -37,7 +77,7 @@
               <svg viewBox="0 0 24 24"><path d="M4 5.5h16v13H4z"/><path d="m10 9 5 3-5 3V9Z"/></svg>
               <span>{{ copy.showcase }}</span>
             </NuxtLink>
-            <NuxtLink to="/settings" role="menuitem" @click="close">
+            <NuxtLink v-if="canManageSettings" to="/settings" role="menuitem" @click="close">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.8-1L14.4 3h-4l-.4 3a8 8 0 0 0-1.8 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2.1l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.8 1l.4 3h4l.4-3a8 8 0 0 0 1.8-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg>
               <span>{{ copy.settings }}</span>
             </NuxtLink>
@@ -69,16 +109,71 @@ defineProps<{ compact?: boolean }>()
 const route = useRoute()
 const menuRoot = ref<HTMLElement | null>(null)
 const open = ref(false)
-const { isAuthenticated, session, signOut } = useWorkspaceSession()
+const { isAuthenticated, currentUser, currentWorkspace, canManageSettings, workspaces, usage, signOut, switchWorkspace } = useWorkspaceSession()
 const { locale, toggleLocale } = useLingLocale()
+const switchingWorkspace = ref(false)
 
 const copy = computed(() => locale.value === 'en-US' ? {
-  signIn: 'Sign in', accountMenu: 'Open account menu', name: 'Studio Admin', workspace: 'LingDrama Studio',
-  online: 'Signed in', showcase: 'Productions', settings: 'Settings', language: 'Switch language', signOut: 'Sign out',
+  signIn: 'Sign in', accountMenu: 'Open account menu', workspace: 'Production workspace', currentWorkspace: 'CURRENT WORKSPACE',
+  role: 'Role', region: 'Region', online: 'Signed in', switchWorkspace: 'SWITCH WORKSPACE', showcase: 'Productions', settings: 'Settings', language: 'Switch language', signOut: 'Sign out',
 } : {
-  signIn: '登录', accountMenu: '打开用户菜单', name: '制作管理员', workspace: '灵动制作中心',
-  online: '已登录', showcase: '作品中心', settings: '系统设置', language: '切换语言', signOut: '退出登录',
+  signIn: '登录', accountMenu: '打开用户菜单', workspace: '制作工作区', currentWorkspace: '当前工作区',
+  role: '角色', region: '地区', online: '已登录', switchWorkspace: '切换工作区', showcase: '作品中心', settings: '系统设置', language: '切换语言', signOut: '退出登录',
 })
+
+const initials = computed(() => {
+  const name = currentUser.value?.name || 'LD'
+  const words = name.trim().split(/\s+/)
+  return (words.length > 1 ? `${words[0][0]}${words[words.length - 1][0]}` : name.slice(0, 2)).toUpperCase()
+})
+
+const roleLabel = computed(() => {
+  const role = String(currentUser.value?.role || '')
+  const known = role.toLowerCase()
+  if (locale.value === 'zh-CN') {
+    if (['admin', 'administrator', 'platform_admin'].includes(known)) return '平台管理员'
+    if (known === 'owner') return '工作区负责人'
+    if (known.includes('executive producer')) return '执行制片人'
+    if (known.includes('development producer')) return '开发制片人'
+    if (known.includes('creative producer')) return '创意制片人'
+    if (known.includes('producer')) return '制片人'
+    if (known.includes('director')) return '导演'
+    if (known.includes('editor')) return '后期制作'
+  }
+  return role || (locale.value === 'en-US' ? 'Producer' : '制作成员')
+})
+
+const usageMetrics = computed(() => {
+  const source = usage.value?.summary || usage.value
+  if (!source || typeof source !== 'object') return []
+  const result = []
+  if (source.total_requests != null) result.push({ label: locale.value === 'en-US' ? 'Total requests' : '总调用', value: Number(source.total_requests).toLocaleString(locale.value) })
+  if (source.total_tokens != null) result.push({ label: locale.value === 'en-US' ? 'Tokens' : '总 Token', value: Number(source.total_tokens).toLocaleString(locale.value) })
+  return result
+})
+
+function workspaceInitial(name) {
+  return String(name || 'LD').replace(/[\s·]+/g, '').slice(0, 2).toUpperCase()
+}
+
+function workspaceRole(role) {
+  const value = String(role || '').toLowerCase()
+  if (locale.value === 'zh-CN') return value === 'owner' ? '负责人' : value === 'platform_admin' ? '运营' : '制作成员'
+  return value === 'platform_admin' ? 'Operations' : value === 'owner' ? 'Lead' : 'Member'
+}
+
+async function changeWorkspace(id) {
+  if (String(id) === String(currentWorkspace.value?.id) || switchingWorkspace.value) return
+  switchingWorkspace.value = true
+  try {
+    await switchWorkspace(id)
+    close()
+    await navigateTo('/', { replace: true })
+    if (import.meta.client) window.location.reload()
+  } finally {
+    switchingWorkspace.value = false
+  }
+}
 
 const loginTarget = computed(() => ({
   path: '/login',
@@ -90,7 +185,7 @@ function close() {
 }
 
 async function logout() {
-  signOut()
+  await signOut()
   close()
   await navigateTo('/login')
 }
@@ -130,7 +225,8 @@ onBeforeUnmount(() => {
   cursor: pointer; text-align: left; transition: border-color .18s, background .18s, box-shadow .18s;
 }
 .account-trigger:hover, .account-trigger[aria-expanded="true"] { background: rgba(19, 27, 43, .92); border-color: rgba(113, 200, 233, .25); box-shadow: 0 8px 25px rgba(0,0,0,.18); }
-.avatar { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; position: relative; color: #071019; border-radius: 9px; background: linear-gradient(135deg,#82e7ff,#7686ff); font-size: 12px; font-weight: 800; }
+.avatar { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; position: relative; overflow: visible; color: #071019; border-radius: 9px; background: linear-gradient(135deg,#d8eef2,#7b91b5); font-size: 10px; font-weight: 800; }
+.avatar > img, .identity-avatar > img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .avatar i { width: 7px; height: 7px; position: absolute; right: -2px; bottom: -2px; border: 2px solid #0d1320; border-radius: 50%; background: #52dda0; }
 .account-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .account-copy b { overflow: hidden; color: var(--text-1); font-size: 10px; font-weight: 700; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
@@ -144,12 +240,18 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(24px) saturate(135%);
 }
 .identity-card { min-height: 62px; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 9px; border: 1px solid rgba(130,164,211,.1); border-radius: 10px; background: linear-gradient(135deg,rgba(61,183,229,.07),rgba(103,88,226,.06)); }
-.identity-avatar { width: 34px; height: 34px; display: grid; place-items: center; color: #08111a; border-radius: 10px; background: linear-gradient(135deg,#8cecff,#7c84ff); font-size: 13px; font-weight: 800; }
+.identity-avatar { width: 34px; height: 34px; display: grid; place-items: center; color: #08111a; border-radius: 10px; background: linear-gradient(135deg,#d8eef2,#7b91b5); font-size: 10px; font-weight: 800; }
 .identity-card > span:nth-child(2) { min-width: 0; display: flex; flex-direction: column; }
 .identity-card b { color: var(--text-1); font-size: 10px; }
 .identity-card small { overflow: hidden; color: var(--text-3); font-size: 8px; text-overflow: ellipsis; }
 .identity-card em { display: inline-flex; align-items: center; gap: 4px; color: #71dbac; font-size: 8px; font-style: normal; }
 .identity-card em i { width: 5px; height: 5px; border-radius: 50%; background: #53dda0; box-shadow: 0 0 8px rgba(83,221,160,.7); }
+.workspace-card { min-height: 56px; display: grid; grid-template-columns: 31px minmax(0,1fr) auto; align-items: center; gap: 9px; margin-top: 7px; padding: 9px; border: 1px solid rgba(132,161,201,.1); border-radius: 10px; background: rgba(255,255,255,.018); }
+.workspace-mark { width: 31px; height: 31px; display: flex; align-items: flex-end; justify-content: center; gap: 2px; padding-bottom: 8px; border-radius: 9px; color: #b9c6d8; background: rgba(255,255,255,.035); }
+.workspace-mark i { width: 3px; border-radius: 3px; background: currentColor; }.workspace-mark i:nth-child(1){height:7px}.workspace-mark i:nth-child(2){height:13px}.workspace-mark i:nth-child(3){height:9px}
+.workspace-card > span:nth-child(2) { min-width: 0; display: flex; flex-direction: column; }.workspace-card small { color: var(--text-3); font: 650 7px var(--font-mono); letter-spacing: .1em; }.workspace-card b { overflow: hidden; margin-top: 2px; color: var(--text-1); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }.workspace-card em { max-width: 62px; overflow: hidden; padding: 3px 6px; color: #9db1ca; border: 1px solid rgba(142,168,205,.12); border-radius: 999px; font-size: 7px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-switcher { max-height: 228px; overflow-y: auto; margin-top: 7px; padding: 7px; border: 1px solid rgba(132,161,201,.1); border-radius: 10px; background: rgba(3,7,13,.34); }.workspace-switcher > span { display: block; padding: 2px 4px 6px; color: var(--text-3); font: 650 7px var(--font-mono); letter-spacing: .11em; }.workspace-switcher button { width: 100%; min-height: 43px; display: grid; grid-template-columns: 27px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 5px 6px; color: var(--text-2); border: 0; border-radius: 8px; background: transparent; cursor: pointer; text-align: left; }.workspace-switcher button:hover,.workspace-switcher button.active { color: var(--text-0); background: rgba(255,255,255,.045); }.workspace-switcher button > i { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 8px; color: #a9b9cd; background: rgba(139,161,193,.1); font-size: 7px; font-style: normal; font-weight: 750; }.workspace-switcher button > span { min-width: 0; display: flex; flex-direction: column; }.workspace-switcher button b,.workspace-switcher button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workspace-switcher button b { font-size: 8px; }.workspace-switcher button small { color: var(--text-3); font-size: 7px; }.workspace-switcher button > em { color: var(--success); font-size: 9px; font-style: normal; }
+.identity-meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 9px 10px 4px; }.identity-meta span { color: var(--text-3); font-size: 8px; }.identity-meta b { overflow: hidden; color: var(--text-2); font-size: 8px; font-weight: 600; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .menu-section { padding: 6px 0; }
 .menu-section + .menu-section { border-top: 1px solid rgba(139,166,207,.1); }
 .menu-section a, .menu-section button { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 9px; padding: 0 9px; color: var(--text-2); background: none; border: 0; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 10px; text-align: left; transition: color .16s, background .16s; }

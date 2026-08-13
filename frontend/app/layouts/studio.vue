@@ -7,27 +7,27 @@
       </button>
 
       <nav class="studio-shellnav" :aria-label="copy.navigation">
-        <NuxtLink to="/showcase" class="studio-showcase-link" :title="copy.showcase">
+        <NuxtLink to="/showcase" class="studio-showcase-link" :title="copy.showcase" :aria-label="copy.showcase">
           <svg viewBox="0 0 24 24"><path d="M4 5.5h16v13H4z"/><path d="m10 9 5 3-5 3V9Z"/></svg>
           <span>{{ copy.showcase }}</span>
           <i></i>
         </NuxtLink>
-        <NuxtLink to="/" :title="copy.projects">
+        <NuxtLink to="/" :title="copy.projects" :aria-label="copy.projects">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span>{{ copy.projects }}</span>
         </NuxtLink>
-        <NuxtLink to="/assets" :title="copy.assets">
+        <NuxtLink to="/assets" :title="copy.assets" :aria-label="copy.assets">
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.1-2.1L20 19"/></svg>
           <span>{{ copy.assets }}</span>
         </NuxtLink>
-        <NuxtLink to="/tasks" :title="copy.tasks">
+        <NuxtLink to="/tasks" :title="copy.tasks" :aria-label="copy.tasks">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>
           <span>{{ copy.tasks }}</span>
         </NuxtLink>
       </nav>
 
       <div class="studio-shell-actions">
-        <span class="workspace-label">{{ copy.workspace }}</span>
+        <span class="workspace-label">{{ currentWorkspace?.name || copy.workspace }}<i v-if="currentWorkspace?.region"> · {{ currentWorkspace.region }}</i></span>
         <button class="studio-locale" type="button" :title="localeTitle" @click="toggleLocale">
           {{ locale === 'zh-CN' ? 'EN' : '中' }}
         </button>
@@ -44,8 +44,10 @@
 import brandLogo from '~/assets/lingdrama-logo.svg'
 import { useLingLocale } from '~/composables/useLingLocale'
 import UserMenu from '~/components/UserMenu.vue'
+import { useWorkspaceSession } from '~/composables/useWorkspaceSession'
 
 const { locale, localeTitle, toggleLocale } = useLingLocale()
+const { currentWorkspace } = useWorkspaceSession()
 const copy = computed(() => locale.value === 'en-US' ? {
   home: 'LingDrama home', navigation: 'Studio navigation', showcase: 'Productions', projects: 'Projects', assets: 'Assets', tasks: 'Tasks', settings: 'Settings', workspace: 'PRODUCTION WORKSPACE',
 } : {
@@ -136,6 +138,7 @@ const copy = computed(() => locale.value === 'en-US' ? {
 }
 .studio-shell-actions { justify-self: end; display: flex; align-items: center; gap: 10px; }
 .workspace-label { color: var(--text-3); font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.workspace-label i { color: #8492a6; font-style: normal; font-weight: 500; letter-spacing: .06em; }
 .studio-settings {
   width: 28px;
   height: 28px;

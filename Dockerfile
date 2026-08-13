@@ -1,5 +1,5 @@
 # ── Stage 1: Build frontend ──────────────────────────────────
-FROM node:20-alpine AS frontend-build
+FROM node:22-alpine AS frontend-build
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run generate
 
 # ── Stage 2: Build backend native modules ────────────────────
-FROM node:20-alpine AS backend-build
+FROM node:22-alpine AS backend-build
 
 RUN apk add --no-cache python3 make g++
 
@@ -19,7 +19,7 @@ COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 
 # ── Stage 3: Production image (lean) ────────────────────────
-FROM node:20-alpine
+FROM node:22-alpine
 
 # ffmpeg (runtime) + CJK fonts for burned-in Chinese subtitles + tsx
 RUN apk add --no-cache ffmpeg libstdc++ font-noto-cjk \
@@ -33,6 +33,7 @@ COPY backend/package.json backend/package-lock.json ./backend/
 
 # Backend source
 COPY backend/src ./backend/src
+COPY backend/scripts ./backend/scripts
 COPY backend/tsconfig.json ./backend/
 
 # Frontend static output

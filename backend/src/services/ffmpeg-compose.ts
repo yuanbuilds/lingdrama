@@ -12,18 +12,16 @@ import { eq } from 'drizzle-orm'
 import { now } from '../utils/response.js'
 import { generateTTS } from './tts-generation.js'
 import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn } from '../utils/task-logger.js'
+import { resolveStoragePath } from '../utils/storage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STORAGE_ROOT = process.env.STORAGE_PATH || path.resolve(__dirname, '../../../data/static')
-const DATA_ROOT = path.resolve(__dirname, '../../../data')
 let subtitleFilterSupport: boolean | null = null
 const IGNORE_TTS_SPEAKERS = /^(环境音|环境声|音效|效果音|sfx|sound ?effect|bgm|背景音|背景音乐|ambient)$/i
 const IGNORE_TTS_TEXT = /^(无|无对白|无台词|无旁白|无需配音|无需对白|none|null|n\/a|na|环境音|环境声|音效|效果音|纯音效|纯环境音|只有环境音|仅环境音|背景音|背景音乐|bgm|sfx|ambient)$/i
 
 function toAbsPath(relativePath: string): string {
-  if (path.isAbsolute(relativePath)) return relativePath
-  if (relativePath.startsWith('static/')) return path.join(DATA_ROOT, relativePath)
-  return path.join(STORAGE_ROOT, relativePath)
+  return resolveStoragePath(relativePath, { mustExist: true })
 }
 
 function supportsSubtitleFilter(): boolean {

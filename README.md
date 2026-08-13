@@ -16,7 +16,7 @@
 
 ## Docker 部署
 
-环境要求：Docker 24+，建议至少 4 核 CPU、8 GB 内存，并预留足够的图片与视频存储空间。
+环境要求：Docker 24+，建议至少 4 核 CPU、8 GB 内存，并预留足够的图片与视频存储空间。生产镜像使用 Node.js 22。
 
 ```bash
 git clone https://github.com/yuanbuilds/lingdrama.git
@@ -26,7 +26,7 @@ mkdir -p data/static
 docker run -d \
   --name lingdrama \
   --restart unless-stopped \
-  -p 5679:5679 \
+  -p 127.0.0.1:5679:5679 \
   -e NODE_ENV=production \
   -e PORT=5679 \
   -e DB_PATH=/app/data/lingdrama.db \
@@ -35,7 +35,7 @@ docker run -d \
   lingdrama:local
 ```
 
-启动后访问 `http://服务器地址:5679`。首次使用时，请在「设置 / Settings」中添加自己的 AI 服务地址、模型和 API Key。
+启动后可在服务器本机访问 `http://127.0.0.1:5679`，公网环境应再通过 HTTPS 反向代理开放。首次使用时，请在「设置 / Settings」中添加自己的 AI 服务地址、模型和 API Key。
 
 生产环境建议将密钥挂载为只读文件，在设置里的 API Key 填写
 `file:/run/secrets/lingdrama/provider_key`。配置接口只返回密钥是否存在，
@@ -44,10 +44,30 @@ docker run -d \
 ```bash
 docker run ... \
   -v "$(pwd)/secrets:/run/secrets/lingdrama:ro" \
-  lingdrama:local
+lingdrama:local
 ```
 
-也可以使用 Compose：
+全新数据库首次启动后，需要先创建管理员和工作区。准备一个权限为 `600`
+且不进入版本库的 `secrets/showcase-users.json` 文件，例如：
+
+```json
+{
+  "admin_password": "请替换为独立强密码",
+  "client_password": "请替换为不同的独立强密码"
+}
+```
+
+执行 `chmod 600 secrets/showcase-users.json` 后启动容器，再运行一次幂等初始化；
+生产环境推荐为每个账号在 `passwords` 字段设置
+不同密码：
+
+```bash
+docker exec lingdrama npm --prefix backend run seed:showcase
+```
+
+初始化脚本只将 scrypt 密码哈希写入数据库，不输出或保存明文密码。
+
+也可以使用 Compose；默认同样只绑定服务器回环地址，公网仍需 HTTPS 反向代理：
 
 ```bash
 docker compose up -d --build
@@ -61,7 +81,7 @@ curl http://127.0.0.1:5679/api/v1/health
 
 ## 本地开发
 
-需要 Node.js 20+、npm 9+ 和 FFmpeg。
+需要 Node.js 22、npm 10+ 和 FFmpeg。
 
 ```bash
 # 后端

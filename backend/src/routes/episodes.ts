@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, notFound, badRequest, now } from '../utils/response.js'
 import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
+import { getAuthOrNull } from '../security/auth.js'
+import { publicCharacterRecord, publicSceneRecord, publicStoryboardRecord } from '../security/public-production.js'
 
 const app = new Hono()
 
@@ -77,7 +79,7 @@ app.get('/:id/characters', async (c) => {
   if (!charIds.length) return success(c, [])
   const allChars = db.select().from(schema.characters).all()
   const result = allChars.filter(ch => charIds.includes(ch.id) && !ch.deletedAt)
-  return success(c, toSnakeCaseArray(result))
+  return success(c, getAuthOrNull(c) ? toSnakeCaseArray(result) : result.map(publicCharacterRecord))
 })
 
 // GET /episodes/:id/scenes — scenes linked to this episode
@@ -89,14 +91,17 @@ app.get('/:id/scenes', async (c) => {
   if (!sceneIds.length) return success(c, [])
   const allScenes = db.select().from(schema.scenes).all()
   const result = allScenes.filter(sc => sceneIds.includes(sc.id) && !sc.deletedAt)
-  return success(c, toSnakeCaseArray(result))
+  return success(c, getAuthOrNull(c) ? toSnakeCaseArray(result) : result.map(publicSceneRecord))
 })
 
 // GET /episodes/:episode_id/storyboards
 app.get('/:episode_id/storyboards', async (c) => {
   const episodeId = Number(c.req.param('episode_id'))
   const rows = db.select().from(schema.storyboards)
-    .where(eq(schema.storyboards.episodeId, episodeId))
+    .where(and(
+      eq(schema.storyboards.episodeId, episodeId),
+      isNull(schema.storyboards.deletedAt),
+    ))
     .orderBy(schema.storyboards.storyboardNumber)
     .all()
   const links = db.select().from(schema.storyboardCharacters).all()
@@ -113,12 +118,13 @@ app.get('/:episode_id/storyboards', async (c) => {
   const allChars = db.select().from(schema.characters).all()
     .filter(ch => episodeCharIds.includes(ch.id) && !ch.deletedAt)
 
+  const authenticated = Boolean(getAuthOrNull(c))
   return success(c, rows.map((row) => ({
-    ...toSnakeCase(row),
+    ...(authenticated ? toSnakeCase(row) : publicStoryboardRecord(row)),
     character_ids: charIdsByStoryboard.get(row.id) || [],
     characters: allChars
       .filter(ch => (charIdsByStoryboard.get(row.id) || []).includes(ch.id))
-      .map(ch => toSnakeCase(ch)),
+      .map(ch => authenticated ? toSnakeCase(ch) : publicCharacterRecord(ch)),
   })))
 })
 
@@ -128,10 +134,22 @@ app.get('/:id/pipeline-status', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, episodeId)).all()
   if (!ep) return notFound(c, 'Episode not found')
 
-  const chars = db.select().from(schema.characters).where(eq(schema.characters.dramaId, ep.dramaId)).all()
-  const scenes = db.select().from(schema.scenes).where(eq(schema.scenes.dramaId, ep.dramaId)).all()
-  const sbs = db.select().from(schema.storyboards).where(eq(schema.storyboards.episodeId, episodeId)).all()
-  const merges = db.select().from(schema.videoMerges).where(eq(schema.videoMerges.episodeId, episodeId)).all()
+  const chars = db.select().from(schema.characters).where(and(
+    eq(schema.characters.dramaId, ep.dramaId),
+    isNull(schema.characters.deletedAt),
+  )).all()
+  const scenes = db.select().from(schema.scenes).where(and(
+    eq(schema.scenes.dramaId, ep.dramaId),
+    isNull(schema.scenes.deletedAt),
+  )).all()
+  const sbs = db.select().from(schema.storyboards).where(and(
+    eq(schema.storyboards.episodeId, episodeId),
+    isNull(schema.storyboards.deletedAt),
+  )).all()
+  const merges = db.select().from(schema.videoMerges).where(and(
+    eq(schema.videoMerges.episodeId, episodeId),
+    isNull(schema.videoMerges.deletedAt),
+  )).all()
 
   const charsWithVoice = chars.filter(c => c.voiceStyle)
   const charsWithSample = chars.filter(c => c.voiceSampleUrl)

@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">LINGDRAMA · PRODUCTION QUEUE</p>
         <h1>{{ copy('任务中心', 'Task Center') }}</h1>
-        <p>{{ copy('追踪所有图像与视频生成任务，快速定位完成、运行中和需要处理的记录。', 'Track image and video jobs across projects, including completed, active, and attention-needed generations.') }}</p>
+        <p>{{ copy('追踪 AI 创作、图像与视频生产任务，查看真实模型、耗时与用量记录。', 'Track AI development, image, and video jobs with their actual model, duration, and usage records.') }}</p>
       </div>
       <div class="hero-actions">
         <span v-if="activeCount" class="live-indicator"><i></i>{{ copy(`${activeCount} 个任务运行中`, `${activeCount} jobs active`) }}</span>
@@ -46,6 +46,7 @@
         <article v-for="task in filteredTasks" :key="task.key" class="task-row">
           <div :class="['task-kind', task.kind]">
             <svg v-if="task.kind === 'video'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="14" height="14" rx="3"/><path d="m17 10 4-2v8l-4-2z"/></svg>
+            <svg v-else-if="task.kind === 'ai'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="5"/><path d="m10 13 2-4 2 4"/></svg>
             <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
           </div>
           <div class="task-main">
@@ -59,13 +60,13 @@
           </div>
           <div class="task-provider">
             <small>{{ copy('执行引擎', 'Engine') }}</small>
-            <strong>LingDrama</strong>
-            <span>{{ task.kind === 'video' ? copy('动态制作', 'Motion pipeline') : copy('视觉制作', 'Visual pipeline') }}</span>
+            <strong>{{ task.model || 'LingDrama' }}</strong>
+            <span>{{ task.kind === 'ai' ? task.agentLabel : task.kind === 'video' ? copy('动态制作', 'Motion pipeline') : copy('视觉制作', 'Visual pipeline') }}</span>
           </div>
           <div class="task-time">
             <small>{{ copy('耗时', 'Duration') }}</small>
             <strong>{{ durationLabel(task) }}</strong>
-            <span>{{ formatDate(task.updatedAt) }}</span>
+            <span>{{ task.tokens != null ? `${Number(task.tokens).toLocaleString(locale)} tokens · ` : '' }}{{ formatDate(task.updatedAt) }}</span>
           </div>
           <div class="task-actions">
             <button v-if="task.dramaId" class="btn btn-sm" @click="navigateTo(`/drama/${task.dramaId}`)">{{ copy('查看项目', 'Open project') }}</button>
@@ -86,7 +87,7 @@
 
 <script setup>
 import { toast } from 'vue-sonner'
-import { dramaAPI, imageAPI, videoAPI } from '~/composables/useApi'
+import { authAPI, dramaAPI, imageAPI, videoAPI } from '~/composables/useApi'
 import { useLingLocale } from '~/composables/useLingLocale'
 
 const { locale } = useLingLocale()
@@ -94,6 +95,7 @@ const loading = ref(true)
 const dramas = ref([])
 const images = ref([])
 const videos = ref([])
+const aiActivity = ref([])
 const activeFilter = ref('all')
 const keyword = ref('')
 let timer
@@ -109,15 +111,27 @@ function normalizeState(status) {
   return 'active'
 }
 
+function taskResultUrl(row, kind) {
+  const local = valueOf(row, 'local_url', 'localUrl')
+    || valueOf(row, 'local_path', 'localPath')
+    || valueOf(row, 'public_url', 'publicUrl')
+    || valueOf(row, 'storage_path', 'storagePath')
+  const minio = valueOf(row, 'minio_url', 'minioUrl')
+  const value = local || minio || (kind === 'video' ? valueOf(row, 'video_url', 'videoUrl') : valueOf(row, 'image_url', 'imageUrl'))
+  if (!value) return ''
+  const url = String(value)
+  if (/^https?:/i.test(url) && /token=|authorization=/i.test(url)) return ''
+  if (/^(https?:|data:|blob:)/i.test(url)) return url
+  return url.startsWith('/') ? url : `/${url}`
+}
+
 const tasks = computed(() => {
   const normalize = (row, kind) => {
     const dramaId = Number(valueOf(row, 'drama_id', 'dramaId')) || null
     const storyboardId = Number(valueOf(row, 'storyboard_id', 'storyboardId')) || null
     const completedAt = valueOf(row, 'completed_at', 'completedAt')
     const updatedAt = completedAt || valueOf(row, 'updated_at', 'updatedAt') || valueOf(row, 'created_at', 'createdAt')
-    const url = kind === 'video'
-      ? valueOf(row, 'video_url', 'videoUrl') || valueOf(row, 'minio_url', 'minioUrl')
-      : valueOf(row, 'image_url', 'imageUrl') || valueOf(row, 'minio_url', 'minioUrl')
+    const url = taskResultUrl(row, kind)
     return {
       key: `${kind}-${row.id}`,
       kind,
@@ -134,7 +148,33 @@ const tasks = computed(() => {
       url,
     }
   }
-  const normalized = [...images.value.map(row => normalize(row, 'image')), ...videos.value.map(row => normalize(row, 'video'))]
+  const agentLabels = {
+    rewrite: copy('剧本开发', 'Script development'), script: copy('剧本开发', 'Script development'),
+    script_rewriter: copy('剧本开发', 'Script development'),
+    extract: copy('角色与场景', 'Characters & scenes'), extractor: copy('角色与场景', 'Characters & scenes'),
+    storyboard: copy('导演分镜', 'Storyboard direction'), breakdown: copy('导演分镜', 'Storyboard direction'),
+    storyboard_breaker: copy('导演分镜', 'Storyboard direction'),
+    grid_prompt_generator: copy('视觉连续性', 'Visual continuity'),
+    voice: copy('声音制作', 'Voice direction'), voice_assigner: copy('声音制作', 'Voice direction'),
+  }
+  const aiRows = aiActivity.value.map(row => {
+    const agentType = String(valueOf(row, 'agent_type', 'agentType') || 'development')
+    const createdAt = valueOf(row, 'created_at', 'createdAt')
+    const latency = Number(valueOf(row, 'latency_ms', 'latencyMs') || 0)
+    const agentLabel = agentLabels[agentType] || agentType.replace(/[_-]/g, ' ')
+    return {
+      key: `ai-${row.id}`, kind: 'ai', title: `${copy('AI 创作', 'AI Development')} · ${agentLabel}`,
+      dramaId: Number(valueOf(row, 'drama_id', 'dramaId')) || null,
+      project: projectMap.value.get(Number(valueOf(row, 'drama_id', 'dramaId'))),
+      state: normalizeState(row.status), status: row.status, error: valueOf(row, 'error_message', 'errorMessage'),
+      createdAt, completedAt: latency && createdAt ? new Date(new Date(createdAt).getTime() + latency).toISOString() : createdAt,
+      updatedAt: createdAt, latencyMs: latency,
+      model: String(valueOf(row, 'model') || copy('未记录模型', 'Model not recorded')).replace(/^deepseek-v4-pro$/i, 'DeepSeek V4 Pro'),
+      agentLabel,
+      tokens: Number(valueOf(row, 'total_tokens', 'totalTokens') || 0), url: '',
+    }
+  })
+  const normalized = [...aiRows, ...images.value.map(row => normalize(row, 'image')), ...videos.value.map(row => normalize(row, 'video'))]
   for (const task of normalized) {
     if (task.state !== 'failed' || !task.storyboardId) continue
     const recovered = normalized.some(candidate =>
@@ -178,6 +218,7 @@ function stateLabel(task) {
 }
 
 function durationLabel(task) {
+  if (task.latencyMs) return task.latencyMs < 1000 ? `${task.latencyMs}ms` : `${(task.latencyMs / 1000).toFixed(1)}s`
   if (!task.createdAt) return '—'
   const terminalTimestamp = task.completedAt || (task.state !== 'active' ? task.updatedAt : null)
   const end = terminalTimestamp ? new Date(terminalTimestamp).getTime() : Date.now()
@@ -205,10 +246,11 @@ function clearFilters() {
 async function load() {
   loading.value = true
   try {
-    const [dramaResult, imageResult, videoResult] = await Promise.all([dramaAPI.list(), imageAPI.list(), videoAPI.list()])
+    const [dramaResult, imageResult, videoResult, activityResult] = await Promise.all([dramaAPI.list(), imageAPI.list(), videoAPI.list(), authAPI.activity()])
     dramas.value = dramaResult.items || []
     images.value = Array.isArray(imageResult) ? imageResult : []
     videos.value = Array.isArray(videoResult) ? videoResult : []
+    aiActivity.value = Array.isArray(activityResult) ? activityResult : (activityResult?.items || [])
   } catch (error) {
     toast.error(error.message)
   } finally {
@@ -254,6 +296,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
 .task-row:last-child { border-bottom: 0; }.task-row:hover:not(.skeleton) { background: var(--bg-hover); }
 .task-kind { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-2); color: var(--text-2); }
 .task-kind.video { background: var(--accent-bg); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 25%, var(--border)); }
+.task-kind.ai { color: #c8b7ff; border-color: rgba(151,126,255,.24); background: rgba(120,91,233,.11); }
 .task-title-line { display: flex; align-items: center; gap: 9px; }.task-title-line h3 { font: 650 12px var(--font-body); }
 .task-main > p { margin: 5px 0 0; color: var(--text-3); font-size: 10px; }
 .task-error, .task-recovered { max-width: 520px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
@@ -267,5 +310,5 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
 .empty-lines { width: 70px; display: flex; flex-direction: column; gap: 7px; }.empty-lines i { height: 3px; border-radius: 99px; background: var(--bg-3); }.empty-lines i:nth-child(2) { width: 76%; background: var(--accent); }.empty-lines i:nth-child(3) { width: 48%; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -20% 0; } }@keyframes pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (max-width: 1040px) { .task-page { padding: 28px 22px 44px; } .status-overview { grid-template-columns: repeat(2, 1fr); } .task-row { grid-template-columns: 42px minmax(200px, 1fr) minmax(110px, .6fr) auto; }.task-time { display: none; } }
-@media (max-width: 720px) { .task-hero { align-items: flex-start; flex-direction: column; }.panel-head { align-items: stretch; flex-direction: column; }.search-box { width: 100%; }.task-row { grid-template-columns: 38px 1fr auto; }.task-provider { display: none; }.task-actions { grid-column: 2 / -1; justify-content: flex-start; }.hero-actions { width: 100%; justify-content: space-between; } }
+@media (max-width: 720px) { .task-hero { align-items: flex-start; flex-direction: column; }.panel-head { align-items: stretch; flex-direction: column; }.search-box { width: 100%; }.task-row { grid-template-columns: 38px 1fr; }.task-provider,.task-time { grid-column: 2; display: flex; }.task-provider { margin-top: -6px; }.task-time { margin-top: -7px; }.task-actions { grid-column: 2; justify-content: flex-start; }.hero-actions { width: 100%; justify-content: space-between; } }
 </style>

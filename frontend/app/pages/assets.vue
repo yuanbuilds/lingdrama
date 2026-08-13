@@ -115,8 +115,28 @@ function isReadyResult(status, url) {
 const projectMap = computed(() => new Map(dramas.value.map(drama => [Number(drama.id), drama.title])))
 
 function mediaUrl(row, type) {
-  if (type === 'video') return valueOf(row, 'video_url', 'videoUrl') || valueOf(row, 'minio_url', 'minioUrl') || ''
-  return valueOf(row, 'image_url', 'imageUrl') || valueOf(row, 'minio_url', 'minioUrl') || valueOf(row, 'local_path', 'localPath') || ''
+  const local = valueOf(row, 'local_url', 'localUrl')
+    || valueOf(row, 'local_path', 'localPath')
+    || valueOf(row, 'public_url', 'publicUrl')
+    || valueOf(row, 'storage_path', 'storagePath')
+  if (local) return normalizeMediaUrl(local)
+  const minio = valueOf(row, 'minio_url', 'minioUrl')
+  if (isSafeMediaUrl(minio)) return normalizeMediaUrl(minio)
+  const upstream = type === 'video' ? valueOf(row, 'video_url', 'videoUrl') : valueOf(row, 'image_url', 'imageUrl')
+  return isSafeMediaUrl(upstream) ? normalizeMediaUrl(upstream) : ''
+}
+
+function normalizeMediaUrl(value) {
+  if (!value) return ''
+  const url = String(value)
+  if (/^(https?:|data:|blob:)/i.test(url)) return url
+  return url.startsWith('/') ? url : `/${url}`
+}
+
+function isSafeMediaUrl(value) {
+  if (!value) return false
+  const url = String(value)
+  return !/^https?:/i.test(url) || !/token=|authorization=/i.test(url)
 }
 
 const assets = computed(() => {
@@ -131,12 +151,12 @@ const assets = computed(() => {
 
   for (const drama of dramas.value) {
     for (const character of drama.characters || []) {
-      const url = valueOf(character, 'image_url', 'imageUrl') || valueOf(character, 'local_path', 'localPath') || ''
+      const url = mediaUrl(character, 'image')
       if (!url) continue
       add({ key: `character-${character.id}`, kind: 'character', title: character.name || copy('未命名角色', 'Untitled character'), project: drama.title, dramaId: drama.id, url, status: 'completed', updatedAt: valueOf(character, 'updated_at', 'updatedAt') })
     }
     for (const scene of drama.scenes || []) {
-      const url = valueOf(scene, 'image_url', 'imageUrl') || valueOf(scene, 'local_path', 'localPath') || ''
+      const url = mediaUrl(scene, 'image')
       if (!url) continue
       add({ key: `scene-${scene.id}`, kind: 'scene', title: scene.location || copy('未命名场景', 'Untitled scene'), project: drama.title, dramaId: drama.id, url, status: scene.status || 'completed', updatedAt: valueOf(scene, 'updated_at', 'updatedAt') })
     }

@@ -6,6 +6,9 @@ import { sqliteTable, text, integer, real, primaryKey } from 'drizzle-orm/sqlite
 
 export const dramas = sqliteTable('dramas', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: integer('workspace_id'),
+  createdBy: integer('created_by'),
+  isPublic: integer('is_public', { mode: 'boolean' }).notNull().default(false),
   title: text('title').notNull(),
   description: text('description'),
   genre: text('genre'),
@@ -19,6 +22,109 @@ export const dramas = sqliteTable('dramas', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
+})
+
+export const organizations = sqliteTable('organizations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  region: text('region').notNull(),
+  city: text('city'),
+  locale: text('locale').notNull().default('en-US'),
+  timezone: text('timezone').notNull().default('UTC'),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  displayName: text('display_name').notNull(),
+  title: text('title'),
+  locale: text('locale').notNull().default('en-US'),
+  city: text('city'),
+  country: text('country'),
+  avatarUrl: text('avatar_url'),
+  isPlatformAdmin: integer('is_platform_admin', { mode: 'boolean' }).notNull().default(false),
+  status: text('status').notNull().default('active'),
+  lastLoginAt: text('last_login_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const organizationMemberships = sqliteTable('organization_memberships', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  organizationId: integer('organization_id').notNull(),
+  userId: integer('user_id').notNull(),
+  role: text('role').notNull().default('member'),
+  createdAt: text('created_at').notNull(),
+})
+
+export const workspaces = sqliteTable('workspaces', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  organizationId: integer('organization_id').notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  region: text('region').notNull(),
+  city: text('city'),
+  locale: text('locale').notNull().default('en-US'),
+  timezone: text('timezone').notNull().default('UTC'),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const workspaceMemberships = sqliteTable('workspace_memberships', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: integer('workspace_id').notNull(),
+  userId: integer('user_id').notNull(),
+  role: text('role').notNull().default('member'),
+  createdAt: text('created_at').notNull(),
+})
+
+export const sessions = sqliteTable('sessions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  activeWorkspaceId: integer('active_workspace_id'),
+  userAgent: text('user_agent'),
+  ipHash: text('ip_hash'),
+  createdAt: text('created_at').notNull(),
+  lastSeenAt: text('last_seen_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  revokedAt: text('revoked_at'),
+})
+
+export const aiActivityLogs = sqliteTable('ai_activity_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: integer('workspace_id').notNull(),
+  userId: integer('user_id').notNull(),
+  dramaId: integer('drama_id'),
+  episodeId: integer('episode_id'),
+  agentType: text('agent_type').notNull(),
+  provider: text('provider'),
+  model: text('model'),
+  status: text('status').notNull().default('running'),
+  promptSummary: text('prompt_summary'),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  latencyMs: integer('latency_ms'),
+  errorCode: text('error_code'),
+  createdAt: text('created_at').notNull(),
+  completedAt: text('completed_at'),
+})
+
+export const mediaObjects = sqliteTable('media_objects', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: integer('workspace_id').notNull(),
+  userId: integer('user_id').notNull(),
+  path: text('path').notNull().unique(),
+  mimeType: text('mime_type'),
+  sizeBytes: integer('size_bytes'),
+  createdAt: text('created_at').notNull(),
 })
 
 export const episodes = sqliteTable('episodes', {

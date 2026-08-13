@@ -22,6 +22,7 @@ function formatTime(): string {
 }
 
 const SECRET_KEY = /(?:authorization|api[_-]?key|apikey|access[_-]?token|token|secret|password)/i
+const MAX_LOGGABLE_BODY_BYTES = 64 * 1024
 
 function sanitizeBodyValue(value: unknown, key = ''): unknown {
   if (SECRET_KEY.test(key)) return '***'
@@ -62,8 +63,15 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
     try {
       const contentType = c.req.header('content-type') || ''
-      if (contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')) {
+      const contentLength = Number(c.req.header('content-length') || 0)
+      if (process.env.NODE_ENV === 'production') {
+        bodyInfo = `\n  ${colors.dim}body: <body omitted>${colors.reset}`
+      } else if (path === '/api/v1/auth/login') {
+        bodyInfo = `\n  ${colors.dim}body: <credentials omitted>${colors.reset}`
+      } else if (contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')) {
         bodyInfo = `\n  ${colors.dim}body: <binary body omitted>${colors.reset}`
+      } else if (!Number.isFinite(contentLength) || contentLength <= 0 || contentLength > MAX_LOGGABLE_BODY_BYTES) {
+        bodyInfo = `\n  ${colors.dim}body: <body omitted>${colors.reset}`
       } else {
         const clone = c.req.raw.clone()
         const text = await clone.text()
