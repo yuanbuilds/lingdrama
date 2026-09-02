@@ -4,7 +4,7 @@ set -eu
 proxy_root="${LINGDRAMA_PROXY_ROOT:-/home/ailab/apps/lingdrama/public-proxy}"
 proxy_container="${LINGDRAMA_PROXY_CONTAINER:-lingdrama-public-proxy}"
 
-docker run --rm \
+docker run --rm --network host \
   -v "$proxy_root/letsencrypt:/etc/letsencrypt" \
   -v "$proxy_root/acme:/var/www/acme" \
   certbot/certbot:latest renew --quiet --no-random-sleep-on-renew
