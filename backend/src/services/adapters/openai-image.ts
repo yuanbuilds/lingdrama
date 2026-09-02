@@ -18,10 +18,11 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
 
   buildGenerateRequest(config: AIConfig, record: ImageGenerationRecord): ProviderRequest {
     // OpenAI 使用 size 字段，格式为 "1024x1024"
-    const size = record.size || '1024x1024'
+    const model = record.model || 'dall-e-3'
+    const size = normalizeSizeForModel(model, record.size || '1024x1024')
 
     const body: any = {
-      model: record.model || 'dall-e-3',
+      model,
       prompt: record.prompt,
       size,
       n: 1,
@@ -92,4 +93,18 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
     }
     return null
   }
+}
+
+function normalizeSizeForModel(model: string, requested: string) {
+  if (!model.toLowerCase().startsWith('doubao-seedream')) return requested
+
+  const [width, height] = requested.split('x').map(Number)
+  if (Number.isFinite(width) && Number.isFinite(height) && width * height >= 3_686_400) {
+    return requested
+  }
+
+  const ratio = width > 0 && height > 0 ? width / height : 16 / 9
+  if (ratio <= 0.72) return '1440x2560'
+  if (ratio >= 1.4) return '2560x1440'
+  return '2048x2048'
 }

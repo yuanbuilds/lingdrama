@@ -4,12 +4,14 @@ services:
     container_name: lingdrama
     build: .
     ports:
-      - "5679:5679"
+      - "127.0.0.1:5679:5679"
     volumes:
       - ./data:/app/data
+      - ./secrets:/run/secrets/lingdrama:ro
     environment:
       - NODE_ENV=production
       - PORT=5679
       - DB_PATH=/app/data/lingdrama.db
       - STORAGE_PATH=/app/data/static
+      - LINGDRAMA_SEED_PASSWORD_FILE=/run/secrets/lingdrama/showcase-users.json
     restart: unless-stopped

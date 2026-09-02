@@ -10,7 +10,10 @@ export function getLingLocale(): LingLocale {
 const EN_EXACT: Record<string, string> = {
   // Navigation and projects
   '项目': 'Projects',
+  '任务': 'Tasks',
   '设置': 'Settings',
+  '资产中心': 'Asset Library',
+  '任务中心': 'Task Center',
   '短剧项目': 'Drama Projects',
   '新建项目': 'New Project',
   '删除': 'Delete',

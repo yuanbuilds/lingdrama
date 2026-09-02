@@ -37,7 +37,19 @@ function formatMeta(meta?: Record<string, unknown>) {
   if (!meta) return ''
   const entries = Object.entries(meta)
     .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${key}=${safeValue(value)}`)
+    .map(([key, value]) => {
+      const lower = key.toLowerCase()
+      if (process.env.NODE_ENV === 'production' && /(message|prompt|content|textpreview|reason|body|dialogue|response)/i.test(lower)) {
+        return `${key}=<omitted>`
+      }
+      if (/(authorization|api[_-]?key|apikey|access[_-]?token|secret|password)/i.test(key)) {
+        return `${key}=***`
+      }
+      if (typeof value === 'string' && (lower === 'url' || lower.endsWith('url'))) {
+        return `${key}=${redactUrl(value)}`
+      }
+      return `${key}=${safeValue(value)}`
+    })
   return entries.length ? ` | ${entries.join(' ')}` : ''
 }
 
@@ -135,6 +147,10 @@ export function logTaskError(scope: string, action: string, meta?: Record<string
 }
 
 export function logTaskPayload(scope: string, action: string, payload: unknown) {
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`${C.dim}${timeText()}${C.reset} ${C.blue}[${scope}]${C.reset} ${action} <payload omitted>`)
+    return
+  }
   const sanitized = sanitizeValue(payload)
   const serialized = typeof sanitized === 'string'
     ? sanitized

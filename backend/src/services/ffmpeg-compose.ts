@@ -11,19 +11,17 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { now } from '../utils/response.js'
 import { generateTTS } from './tts-generation.js'
-import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn } from '../utils/task-logger.js'
+import { resolveStoragePath } from '../utils/storage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STORAGE_ROOT = process.env.STORAGE_PATH || path.resolve(__dirname, '../../../data/static')
-const DATA_ROOT = path.resolve(__dirname, '../../../data')
 let subtitleFilterSupport: boolean | null = null
 const IGNORE_TTS_SPEAKERS = /^(环境音|环境声|音效|效果音|sfx|sound ?effect|bgm|背景音|背景音乐|ambient)$/i
 const IGNORE_TTS_TEXT = /^(无|无对白|无台词|无旁白|无需配音|无需对白|none|null|n\/a|na|环境音|环境声|音效|效果音|纯音效|纯环境音|只有环境音|仅环境音|背景音|背景音乐|bgm|sfx|ambient)$/i
 
 function toAbsPath(relativePath: string): string {
-  if (path.isAbsolute(relativePath)) return relativePath
-  if (relativePath.startsWith('static/')) return path.join(DATA_ROOT, relativePath)
-  return path.join(STORAGE_ROOT, relativePath)
+  return resolveStoragePath(relativePath, { mustExist: true })
 }
 
 function supportsSubtitleFilter(): boolean {
@@ -96,10 +94,20 @@ export async function composeStoryboard(storyboardId: number): Promise<string> {
         const pureDialogue = parsedDialogue.pureText
         if (pureDialogue) {
           logTaskProgress('ComposeTask', 'generate-inline-tts', { storyboardId, voiceId, textPreview: pureDialogue.slice(0, 40) })
-          const ttsPath = await generateTTS({ text: pureDialogue, voice: voiceId, configId: ep?.audioConfigId ?? undefined })
-          audioPath = toAbsPath(ttsPath)
-          db.update(schema.storyboards).set({ ttsAudioUrl: ttsPath, updatedAt: now() })
-            .where(eq(schema.storyboards.id, storyboardId)).run()
+          try {
+            const ttsPath = await generateTTS({ text: pureDialogue, voice: voiceId, configId: ep?.audioConfigId ?? undefined })
+            audioPath = toAbsPath(ttsPath)
+            db.update(schema.storyboards).set({ ttsAudioUrl: ttsPath, updatedAt: now() })
+              .where(eq(schema.storyboards.id, storyboardId)).run()
+          } catch (err) {
+            // Video models such as Seedance can provide their own soundtrack.
+            // Keep composing with source audio and subtitles when no TTS service
+            // is configured instead of failing the entire production pipeline.
+            logTaskWarn('ComposeTask', 'inline-tts-unavailable-use-source-audio', {
+              storyboardId,
+              error: (err as Error).message,
+            })
+          }
         }
       }
     }
@@ -141,7 +149,7 @@ export async function composeStoryboard(storyboardId: number): Promise<string> {
           .replace(/\\/g, '/')
           .replace(/:/g, '\\:')
           .replace(/'/g, "\\'")
-        const forceStyle = 'FontSize=20\\,PrimaryColour=&HFFFFFF&\\,OutlineColour=&H000000&\\,Outline=2'
+        const forceStyle = 'FontName=Noto Sans CJK SC\\,FontSize=20\\,PrimaryColour=&HFFFFFF&\\,OutlineColour=&H000000&\\,Outline=2'
         filters.push(`subtitles=filename='${escapedPath}':force_style='${forceStyle}'`)
       } else if (subtitlePath) {
         logTaskProgress('ComposeTask', 'subtitle-filter-unavailable', {
@@ -159,7 +167,9 @@ export async function composeStoryboard(storyboardId: number): Promise<string> {
       if (audioPath) {
         outputOptions.push('-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-shortest')
       } else {
-        outputOptions.push('-an')
+        // Preserve native model audio (rain, ambience, generated speech, etc.).
+        // The optional map also works for providers that return silent video.
+        outputOptions.push('-map', '0:v', '-map', '0:a?', '-c:a', 'aac')
       }
 
       cmd.outputOptions(outputOptions)

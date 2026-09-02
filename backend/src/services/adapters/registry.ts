@@ -4,6 +4,7 @@
  */
 import { MiniMaxImageAdapter } from './minimax-image'
 import { MiniMaxVideoAdapter } from './minimax-video'
+import { OpenAIVideoAdapter } from './openai-video'
 import { MiniMaxTTSAdapter } from './minimax-tts'
 import { OpenAIImageAdapter } from './openai-image'
 import { GeminiImageAdapter } from './gemini-image'
@@ -28,10 +29,12 @@ export const imageAdapters: Record<string, ImageProviderAdapter> = {
 // 视频 Adapter 注册表
 export const videoAdapters: Record<string, VideoProviderAdapter> = {
   minimax: new MiniMaxVideoAdapter(),
+  openai: new OpenAIVideoAdapter(),
+  openrouter: new OpenAIVideoAdapter(),
+  chatfire: new OpenAIVideoAdapter(),
   volcengine: new VolcEngineVideoAdapter(),
   vidu: new ViduVideoAdapter(),
   ali: new AliVideoAdapter(),
-  // Chatfire 视频 - 待确认 API 格式
 }
 
 // TTS Adapter 注册表

@@ -12,6 +12,14 @@ export function badRequest(c: Context, message = 'bad request') {
   return c.json({ code: 400, message }, 400)
 }
 
+export function unauthorized(c: Context, message = 'Authentication required') {
+  return c.json({ code: 401, message }, 401)
+}
+
+export function forbidden(c: Context, message = 'Access denied') {
+  return c.json({ code: 404, message: 'not found' }, 404)
+}
+
 export function notFound(c: Context, message = 'not found') {
   return c.json({ code: 404, message }, 404)
 }

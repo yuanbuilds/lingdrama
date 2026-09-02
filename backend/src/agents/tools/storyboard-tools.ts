@@ -249,7 +249,7 @@ export function createStoryboardTools(episodeId: number, dramaId: number) {
     }),
     execute: async ({ storyboard_id, ...fields }) => {
       const [storyboard] = db.select().from(schema.storyboards).where(eq(schema.storyboards.id, storyboard_id)).all()
-      if (!storyboard) return { error: `Storyboard ${storyboard_id} not found` }
+      if (!storyboard || storyboard.episodeId !== episodeId) return { error: `Storyboard ${storyboard_id} not found` }
       logTaskProgress('StoryboardTool', 'update-begin', {
         episodeId,
         storyboardId: storyboard_id,

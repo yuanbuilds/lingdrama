@@ -21,6 +21,34 @@ function formatTime(): string {
   return new Date().toLocaleTimeString('zh-CN', { hour12: false })
 }
 
+const SECRET_KEY = /(?:authorization|api[_-]?key|apikey|access[_-]?token|token|secret|password)/i
+const MAX_LOGGABLE_BODY_BYTES = 64 * 1024
+
+function sanitizeBodyValue(value: unknown, key = ''): unknown {
+  if (SECRET_KEY.test(key)) return '***'
+  if (typeof value === 'string') {
+    if (value.startsWith('data:')) return `<data omitted: ${value.length} chars>`
+    return value
+  }
+  if (Array.isArray(value)) return value.map(item => sanitizeBodyValue(item))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .map(([childKey, childValue]) => [childKey, sanitizeBodyValue(childValue, childKey)]),
+    )
+  }
+  return value
+}
+
+function sanitizeRequestBody(text: string) {
+  try {
+    return JSON.stringify(sanitizeBodyValue(JSON.parse(text)))
+  } catch {
+    return text
+      .replace(/((?:authorization|api[_-]?key|apikey|access[_-]?token|token|secret|password)\s*[=:]\s*)[^&,\s]+/gi, '$1***')
+  }
+}
+
 /**
  * 全局日志中间件 — 打印请求方法/路径/状态/耗时/请求体
  */
@@ -34,11 +62,24 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   let bodyInfo = ''
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
     try {
-      const clone = c.req.raw.clone()
-      const text = await clone.text()
-      if (text) {
-        const truncated = text.length > 500 ? text.slice(0, 500) + '...' : text
-        bodyInfo = `\n  ${colors.dim}body: ${truncated}${colors.reset}`
+      const contentType = c.req.header('content-type') || ''
+      const contentLength = Number(c.req.header('content-length') || 0)
+      if (process.env.NODE_ENV === 'production') {
+        bodyInfo = `\n  ${colors.dim}body: <body omitted>${colors.reset}`
+      } else if (path === '/api/v1/auth/login') {
+        bodyInfo = `\n  ${colors.dim}body: <credentials omitted>${colors.reset}`
+      } else if (contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')) {
+        bodyInfo = `\n  ${colors.dim}body: <binary body omitted>${colors.reset}`
+      } else if (!Number.isFinite(contentLength) || contentLength <= 0 || contentLength > MAX_LOGGABLE_BODY_BYTES) {
+        bodyInfo = `\n  ${colors.dim}body: <body omitted>${colors.reset}`
+      } else {
+        const clone = c.req.raw.clone()
+        const text = await clone.text()
+        if (text) {
+          const sanitized = sanitizeRequestBody(text)
+          const truncated = sanitized.length > 500 ? sanitized.slice(0, 500) + '...' : sanitized
+          bodyInfo = `\n  ${colors.dim}body: ${truncated}${colors.reset}`
+        }
       }
     } catch {}
   }

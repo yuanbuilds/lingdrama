@@ -6,28 +6,47 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
-          返回项目
+          {{ lt('返回项目', 'Project') }}
         </button>
         <div class="studio-identity">
-          <h1 class="studio-title">{{ drama.title }}</h1>
-          <span class="studio-episode-chip">第 {{ episodeNumber }} 集</span>
+          <div class="studio-overline">
+            <span class="studio-brand-dot"></span>
+            LingDrama · {{ lt('智能制片工作台', 'AI Production Studio') }}
+          </div>
+          <div class="studio-title-row">
+            <h1 class="studio-title">{{ drama.title }}</h1>
+            <span class="studio-episode-chip">{{ lt(`第 ${episodeNumber} 集`, `Episode ${episodeNumber}`) }}</span>
+            <span class="studio-live-state" :class="{ busy: activeJobCount, issue: failedJobCount }">
+              <span class="studio-live-dot"></span>
+              {{ productionHealthLabel }}
+            </span>
+          </div>
           <div class="studio-meta-row">
             <span class="studio-meta-pill">{{ currentSubStageLabel }}</span>
-            <span class="studio-meta-pill is-progress">{{ pipelineProgress }}/11</span>
-            <span class="studio-meta-inline">{{ chars.length }} 角色 · {{ sbs.length }} 镜头</span>
+            <span class="studio-meta-inline">{{ episodeDisplayTitle }}</span>
+            <span class="studio-meta-inline">{{ lt(`${chars.length} 角色 · ${sbs.length} 镜头`, `${chars.length} characters · ${sbs.length} shots`) }}</span>
           </div>
         </div>
       </div>
 
       <div class="studio-topbar-side">
+        <div class="topbar-progress" :title="lt('本集制作进度', 'Episode production progress')">
+          <div class="topbar-progress-ring" :style="{ '--progress': `${pipelineProgressPercent * 3.6}deg` }">
+            <span>{{ pipelineProgressPercent }}</span>
+          </div>
+          <div class="topbar-progress-copy">
+            <strong>{{ lt('本集进度', 'Episode progress') }}</strong>
+            <span>{{ pipelineProgress }}/11 · {{ mainStageLabel(activeMainStage) }}</span>
+          </div>
+        </div>
         <div class="studio-actions">
           <button class="btn" @click="refresh">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            刷新
+            {{ lt('刷新', 'Refresh') }}
           </button>
           <button class="btn btn-primary" @click="panel = mergeUrl ? 'export' : (sbs.length ? 'production' : 'script')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            {{ mergeUrl ? '查看成片' : (sbs.length ? '继续制作' : '开始制作') }}
+            {{ mergeUrl ? lt('查看成片', 'Review Final Cut') : (sbs.length ? lt('继续制作', 'Continue Production') : lt('开始制作', 'Start Production')) }}
           </button>
         </div>
       </div>
@@ -65,7 +84,7 @@
       <div class="sidebar-bottom">
         <div class="progress-wrap">
           <div class="progress-head">
-            <span class="progress-label">制作进度</span>
+            <span class="progress-label">{{ lt('制作进度', 'Production progress') }}</span>
             <span class="progress-val">{{ pipelineProgress }}/11</span>
           </div>
           <div class="progress-track">
@@ -90,6 +109,24 @@
 
     <!-- ========== MAIN CONTENT ========== -->
     <main class="main">
+      <div class="main-stage-rail">
+        <button
+          v-for="(stage, stageIndex) in mainStageDefs"
+          :key="stage.id"
+          :class="['main-stage-node', { active: activeMainStage === stage.id, done: mainStageDone(stage.id) }]"
+          @click="goMainStage(stage.id)"
+        >
+          <span class="main-stage-index">
+            <svg v-if="mainStageDone(stage.id)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span v-else>0{{ stageIndex + 1 }}</span>
+          </span>
+          <span class="main-stage-copy">
+            <strong>{{ mainStageLabel(stage.id) }}</strong>
+            <small>{{ mainStageDescription(stage.id) }}</small>
+          </span>
+          <span v-if="stageIndex < mainStageDefs.length - 1" class="main-stage-connector"></span>
+        </button>
+      </div>
       <div v-if="activeSubSteps.length" class="stage-subnav">
         <button
           v-for="sub in activeSubSteps"
@@ -442,24 +479,40 @@
                   :class="['shot-item', { active: selectedSb?.id === sb.id }]"
                   @click="selectedSb = sb"
                 >
-                  <div class="shot-item-header">
-                    <div class="shot-num">#{{ String(i+1).padStart(2,'0') }}</div>
-                    <span class="tag" style="font-size:10px">{{ sb.shot_type || sb.shotType || '—' }}</span>
-                    <span v-if="getStoryboardCharacterIds(sb).length" class="tag" style="font-size:10px">{{ getStoryboardCharacterIds(sb).length }} 角色</span>
-                    <div class="shot-status">
-                      <div v-if="sb.imageUrl || sb.composedImage || sb.firstFrameImage" class="shot-dot has-img" title="已生成图片"></div>
-                      <div v-if="sb.videoUrl || sb.composedVideoUrl" class="shot-dot has-video" title="已生成视频"></div>
-                      <div v-if="sb.dialogue" class="shot-dot has-dialogue" title="有对白"></div>
+                  <div class="shot-item-media">
+                    <img
+                      v-if="getStoryboardCover(sb)"
+                      :src="'/' + getStoryboardCover(sb)"
+                      :alt="lt(`镜头 ${i + 1}`, `Shot ${i + 1}`)"
+                    />
+                    <div v-else class="shot-item-media-empty">
+                      <Clapperboard :size="18" />
                     </div>
+                    <span class="shot-item-time">{{ sb.duration || 10 }}s</span>
+                    <span :class="['shot-item-state', `is-${shotWorkflowState(sb).tone}`]">
+                      <span></span>{{ shotWorkflowState(sb).label }}
+                    </span>
                   </div>
-                  <div class="shot-body">
-                    <div class="shot-desc">{{ sb.description || sb.title || '无描述' }}</div>
-                  </div>
-                  <div class="shot-meta">
-                    <span class="mono dim" style="font-size:10px">{{ sb.duration || 10 }}s</span>
-                    <span v-if="sb.location" class="shot-location">{{ sb.location }}</span>
-                    <span v-if="getStoryboardCharacterNames(sb).length" class="shot-location">{{ getStoryboardCharacterNames(sb).join(' / ') }}</span>
-                    <span v-if="sb.dialogue" class="shot-dialogue">{{ sb.dialogue }}</span>
+                  <div class="shot-item-copy">
+                    <div class="shot-item-header">
+                      <div class="shot-num">#{{ String(i+1).padStart(2,'0') }}</div>
+                      <span class="shot-type-label">{{ sb.shot_type || sb.shotType || lt('未设景别', 'Shot size pending') }}</span>
+                      <div class="shot-status">
+                        <div v-if="hasImg(sb)" class="shot-dot has-img" :title="lt('已生成图片', 'Image ready')"></div>
+                        <div v-if="hasVid(sb)" class="shot-dot has-video" :title="lt('已生成视频', 'Video ready')"></div>
+                        <div v-if="hasDialogue(sb)" class="shot-dot has-dialogue" :title="lt('有对白', 'Has dialogue')"></div>
+                      </div>
+                    </div>
+                    <div class="shot-body">
+                      <div class="shot-desc">{{ sb.description || sb.title || lt('无描述', 'No description') }}</div>
+                    </div>
+                    <div class="shot-meta">
+                      <span v-if="sb.location" class="shot-location">{{ sb.location }}</span>
+                      <span v-if="getStoryboardCharacterNames(sb).length" class="shot-location">{{ getStoryboardCharacterNames(sb).join(' / ') }}</span>
+                    </div>
+                    <div class="shot-progress-track" :title="lt('镜头制作完成度', 'Shot readiness')">
+                      <span :style="{ width: `${shotCompletionPercent(sb)}%` }"></span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -479,41 +532,55 @@
               </div>
               <div class="detail-body">
                 <div class="detail-hero">
-                  <div class="detail-hero-copy">
-                    <div class="detail-hero-label">镜头概览</div>
-                    <div class="detail-hero-text">{{ selectedSb.description || selectedSb.title || '当前镜头还没有画面描述，建议先补充核心动作和构图。' }}</div>
-                    <div class="detail-status-row">
-                      <span class="tag">{{ getSceneName(selectedSb) }}</span>
-                      <span class="tag">{{ selectedSb.angle || '未设角度' }}</span>
-                      <span class="tag">{{ selectedSb.movement || '未设运镜' }}</span>
-                      <span class="tag" :class="getFirstFrame(selectedSb) ? 'tag-success' : ''">首帧 {{ getFirstFrame(selectedSb) ? '已生成' : '待生成' }}</span>
-                      <span class="tag" :class="getLastFrame(selectedSb) ? 'tag-success' : ''">尾帧 {{ getLastFrame(selectedSb) ? '已生成' : '待生成' }}</span>
-                      <span class="tag" :class="hasVid(selectedSb) ? 'tag-success' : ''">视频 {{ hasVid(selectedSb) ? '已生成' : '待生成' }}</span>
+                  <div class="detail-feature-media">
+                    <video
+                      v-if="hasComposed(selectedSb) || hasVid(selectedSb)"
+                      :src="'/' + (getComposedVideoUrl(selectedSb) || getVideoUrl(selectedSb))"
+                      controls
+                      preload="metadata"
+                      playsinline
+                    />
+                    <img
+                      v-else-if="getStoryboardCover(selectedSb)"
+                      :src="'/' + getStoryboardCover(selectedSb)"
+                      class="previewable-image"
+                      @click.stop="openImageViewer('/' + getStoryboardCover(selectedSb), lt('镜头画面预览', 'Shot preview'))"
+                    />
+                    <div v-else class="detail-feature-empty">
+                      <Clapperboard :size="28" />
+                      <span>{{ lt('等待生成镜头画面', 'Waiting for shot media') }}</span>
+                    </div>
+                    <div class="detail-feature-overlay">
+                      <span>{{ lt('导演监看', 'Director Monitor') }}</span>
+                      <strong>#{{ String(sbs.indexOf(selectedSb) + 1).padStart(2, '0') }}</strong>
                     </div>
                   </div>
-                  <div class="detail-preview-grid">
-                    <div class="detail-preview-card">
-                      <div class="detail-preview-title">首帧</div>
-                      <div class="detail-preview-media">
-                        <img
-                          v-if="getFirstFrame(selectedSb)"
-                          :src="'/' + getFirstFrame(selectedSb)"
-                          class="previewable-image"
-                          @click.stop="openImageViewer('/' + getFirstFrame(selectedSb), `镜头 #${sbs.indexOf(selectedSb) + 1} 首帧`)"
-                        />
-                        <div v-else class="detail-preview-empty">待生成</div>
+                  <div class="detail-hero-copy">
+                    <div class="detail-hero-head">
+                      <div>
+                        <div class="detail-hero-label">{{ lt('镜头导演单', 'Director Shot Brief') }}</div>
+                        <div class="detail-hero-title">{{ selectedSb.title || lt(`镜头 ${sbs.indexOf(selectedSb) + 1}`, `Shot ${sbs.indexOf(selectedSb) + 1}`) }}</div>
                       </div>
+                      <span :class="['detail-workflow-state', `is-${shotWorkflowState(selectedSb).tone}`]">{{ shotWorkflowState(selectedSb).label }}</span>
                     </div>
-                    <div class="detail-preview-card">
-                      <div class="detail-preview-title">尾帧</div>
-                      <div class="detail-preview-media">
-                        <img
-                          v-if="getLastFrame(selectedSb)"
-                          :src="'/' + getLastFrame(selectedSb)"
-                          class="previewable-image"
-                          @click.stop="openImageViewer('/' + getLastFrame(selectedSb), `镜头 #${sbs.indexOf(selectedSb) + 1} 尾帧`)"
-                        />
-                        <div v-else class="detail-preview-empty">待生成</div>
+                    <div class="detail-hero-text">{{ selectedSb.description || selectedSb.title || lt('当前镜头还没有画面描述，建议先补充核心动作和构图。', 'Add the key action and composition for this shot.') }}</div>
+                    <div class="detail-status-row">
+                      <span class="tag">{{ getSceneName(selectedSb) }}</span>
+                      <span class="tag">{{ selectedSb.angle || lt('未设角度', 'Angle pending') }}</span>
+                      <span class="tag">{{ selectedSb.movement || lt('未设运镜', 'Movement pending') }}</span>
+                    </div>
+                    <div class="detail-readiness">
+                      <div>
+                        <span>{{ lt('首帧', 'First frame') }}</span>
+                        <strong :class="{ ready: getFirstFrame(selectedSb) }">{{ getFirstFrame(selectedSb) ? lt('就绪', 'Ready') : lt('待生成', 'Pending') }}</strong>
+                      </div>
+                      <div>
+                        <span>{{ lt('镜头视频', 'Shot video') }}</span>
+                        <strong :class="{ ready: hasVid(selectedSb) }">{{ hasVid(selectedSb) ? lt('就绪', 'Ready') : lt('待生成', 'Pending') }}</strong>
+                      </div>
+                      <div>
+                        <span>{{ lt('音画合成', 'Final mix') }}</span>
+                        <strong :class="{ ready: hasComposed(selectedSb) }">{{ hasComposed(selectedSb) ? lt('就绪', 'Ready') : lt('待合成', 'Pending') }}</strong>
                       </div>
                     </div>
                   </div>
@@ -734,6 +801,39 @@
                 {{ t.label }}
                 <span v-if="t.badge" class="prod-tab-badge">{{ t.badge }}</span>
               </button>
+            </div>
+          </div>
+
+          <div class="production-overview">
+            <div class="production-overview-copy">
+              <div class="production-overview-kicker">
+                <Activity :size="12" />
+                {{ activeJobCount ? lt('AI 任务正在运行', 'AI jobs in progress') : lt('实时制作状态', 'Live production status') }}
+              </div>
+              <strong>{{ lt('从素材到成片，所有镜头状态集中可见', 'Every shot, asset, and final mix in one view') }}</strong>
+              <span>{{ lt(`${sbs.length} 个镜头 · 预计 ${totalDuration} 秒`, `${sbs.length} shots · ${totalDuration}s estimated runtime`) }}</span>
+            </div>
+            <div class="production-overview-metrics">
+              <button class="production-metric" @click="prodTab = 'shots'">
+                <span>{{ lt('镜头画面', 'Shot frames') }}</span>
+                <strong>{{ shotImgCount }}<small>/{{ sbs.length }}</small></strong>
+                <i :style="{ width: `${ratioPercent(shotImgCount, sbs.length)}%` }"></i>
+              </button>
+              <button class="production-metric" @click="prodTab = 'videos'">
+                <span>{{ lt('动态镜头', 'Video takes') }}</span>
+                <strong>{{ shotVidCount }}<small>/{{ sbs.length }}</small></strong>
+                <i :style="{ width: `${ratioPercent(shotVidCount, sbs.length)}%` }"></i>
+              </button>
+              <button class="production-metric" @click="prodTab = 'compose'">
+                <span>{{ lt('音画合成', 'Final mixes') }}</span>
+                <strong>{{ composedCount }}<small>/{{ sbs.length }}</small></strong>
+                <i :style="{ width: `${ratioPercent(composedCount, sbs.length)}%` }"></i>
+              </button>
+              <div :class="['production-metric production-metric-status', { active: activeJobCount, issue: failedJobCount }]">
+                <span>{{ lt('运行状态', 'Operations') }}</span>
+                <strong>{{ failedJobCount || activeJobCount || 'OK' }}</strong>
+                <small>{{ failedJobCount ? lt('项需处理', 'needs attention') : activeJobCount ? lt('项运行中', 'running') : lt('系统就绪', 'system ready') }}</small>
+              </div>
             </div>
           </div>
 
@@ -1221,6 +1321,9 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                   </div>
                   <span class="prod-idx">#{{ String(i+1).padStart(2,'0') }}</span>
+                  <span :class="['prod-state-badge', `is-${shotWorkflowState(sb).tone}`]">
+                    <span></span>{{ shotWorkflowState(sb).label }}
+                  </span>
                   <span v-if="hasComposed(sb)" class="prod-overlay-badge">已合成</span>
                 </div>
                 <div class="prod-info">
@@ -1283,6 +1386,9 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                   </div>
                   <span class="prod-idx">#{{ String(i+1).padStart(2,'0') }}</span>
+                  <span :class="['prod-state-badge', `is-${shotWorkflowState(sb).tone}`]">
+                    <span></span>{{ shotWorkflowState(sb).label }}
+                  </span>
                   <span v-if="hasComposed(sb)" class="prod-overlay-badge">已合成</span>
                 </div>
                 <div class="prod-info">
@@ -1319,42 +1425,135 @@
           <div class="empty-desc">请先完成分镜和制作流程</div>
           <button class="btn btn-primary" @click="panel = 'script'">前往剧本</button>
         </div>
-        <div v-else class="export-split">
-          <div class="export-main">
-            <template v-if="mergeUrl">
-              <video :src="'/' + mergeUrl" controls class="export-video" />
-              <div class="export-bar">
-                <span class="tag tag-success">拼接完成</span>
-                <span class="dim" style="font-size:12px">{{ sbs.length }} 镜头 · {{ totalDuration }}s</span>
-                <a :href="'/' + mergeUrl" download class="btn btn-primary ml-auto">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  下载视频
-                </a>
+        <div v-else class="delivery-workspace">
+          <div class="delivery-header">
+            <div>
+              <div class="delivery-kicker">
+                <span></span>{{ lt('审片与整集交付', 'Review & Episode Delivery') }}
               </div>
-            </template>
-            <template v-else>
-              <div class="step-empty">
-                <div class="empty-visual">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                </div>
-                <div class="empty-title">拼接全集视频</div>
-                <div class="empty-desc">将 {{ composedCount }} 个已合成镜头拼接为完整视频</div>
-                <button class="btn btn-primary" :disabled="composedCount === 0" @click="doMerge" style="margin-top:12px">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                  开始拼接
-                </button>
-              </div>
-            </template>
-          </div>
-          <div class="export-list">
-            <div class="export-list-head">镜头概览</div>
-            <div class="export-list-body">
-              <div v-for="(sb, i) in sbs" :key="sb.id" class="exp-row">
-                <span class="mono dim" style="font-size:10px">#{{ String(i+1).padStart(2,'0') }}</span>
-                <span class="truncate" style="flex:1;font-size:11px">{{ sb.description || sb.title || '—' }}</span>
-                <span :class="['dot', hasComposed(sb) && 'ok']" />
-              </div>
+              <h2>{{ episodeDisplayTitle }}</h2>
+              <p>{{ lt('检查整集节奏、字幕与镜头连续性，确认后即可下载交付。', 'Review pacing, subtitles, and shot continuity before delivery.') }}</p>
             </div>
+            <div class="delivery-header-actions">
+              <button class="btn" @click="panel = 'production'; prodTab = 'compose'">
+                <Layers :size="13" />{{ lt('返回合成', 'Back to Mix') }}
+              </button>
+              <button v-if="mergeUrl" class="btn" @click="doMerge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {{ lt('重新生成成片', 'Rebuild Final Cut') }}
+              </button>
+              <a v-if="mergeUrl" :href="'/' + mergeUrl" download class="btn btn-primary">
+                <Download :size="14" />{{ lt('下载成片', 'Download Final Cut') }}
+              </a>
+            </div>
+          </div>
+
+          <div class="delivery-grid">
+            <section class="review-suite">
+              <div class="review-monitor">
+                <video v-if="mergeUrl" :src="'/' + mergeUrl" controls class="export-video" />
+                <div v-else class="review-monitor-empty">
+                  <div class="review-monitor-orbit"><Film :size="30" /></div>
+                  <strong>{{ lt('等待整集成片', 'Final cut is waiting') }}</strong>
+                  <span>{{ lt(`已有 ${composedCount}/${sbs.length} 个镜头完成音画合成`, `${composedCount}/${sbs.length} shots are ready for assembly`) }}</span>
+                  <button class="btn btn-primary" :disabled="composedCount === 0" @click="doMerge">
+                    <Sparkles :size="14" />{{ lt('生成整集成片', 'Build Final Cut') }}
+                  </button>
+                </div>
+                <div class="review-monitor-topline">
+                  <span>LINGDRAMA / REVIEW 01</span>
+                  <span :class="['review-live-status', { ready: mergeUrl }]">
+                    <i></i>{{ mergeUrl ? lt('成片就绪', 'FINAL READY') : mergeStatusLabel }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="review-transport">
+                <div class="review-title-block">
+                  <span>{{ lt('整集母版', 'Episode master') }}</span>
+                  <strong>{{ drama.title }} · {{ lt(`第 ${episodeNumber} 集`, `Episode ${episodeNumber}`) }}</strong>
+                </div>
+                <div class="review-transport-metrics">
+                  <span><strong>{{ totalDuration }}s</strong>{{ lt('片长', 'Runtime') }}</span>
+                  <span><strong>{{ sbs.length }}</strong>{{ lt('镜头', 'Shots') }}</span>
+                  <span><strong>{{ composedCount }}</strong>{{ lt('已审片', 'Ready') }}</span>
+                </div>
+              </div>
+
+              <div class="review-timeline-wrap">
+                <div class="review-timeline-head">
+                  <div>
+                    <strong>{{ lt('镜头时间线', 'Shot timeline') }}</strong>
+                    <span>{{ lt('点击镜头返回制作台检查或重做', 'Select a shot to inspect or revise it') }}</span>
+                  </div>
+                  <span class="mono">00:00 — {{ formatTime(totalDuration) }}</span>
+                </div>
+                <div class="review-timeline">
+                  <button
+                    v-for="(sb, i) in sbs"
+                    :key="sb.id"
+                    :class="['timeline-shot', { ready: hasComposed(sb), issue: shotWorkflowState(sb).tone === 'error' }]"
+                    :style="{ '--shot-flex': Math.max(Number(sb.duration || 10), 3) }"
+                    @click="openShotForReview(sb)"
+                  >
+                    <img v-if="getStoryboardCover(sb)" :src="'/' + getStoryboardCover(sb)" />
+                    <span v-else class="timeline-shot-empty"><Clapperboard :size="15" /></span>
+                    <span class="timeline-shot-index">#{{ String(i + 1).padStart(2, '0') }}</span>
+                    <span class="timeline-shot-duration">{{ sb.duration || 10 }}s</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="delivery-inspector">
+              <div class="delivery-score-card">
+                <div class="delivery-score-ring" :style="{ '--score': `${deliveryReadiness * 3.6}deg` }">
+                  <div><strong>{{ deliveryReadiness }}</strong><span>%</span></div>
+                </div>
+                <div>
+                  <span>{{ lt('交付就绪度', 'Delivery readiness') }}</span>
+                  <strong>{{ deliveryReadinessLabel }}</strong>
+                  <small>{{ lt('基于当前镜头、音频与成片状态', 'Based on shot, audio, and final-cut status') }}</small>
+                </div>
+              </div>
+
+              <div class="delivery-panel">
+                <div class="delivery-panel-head">
+                  <strong>{{ lt('交付检查', 'Delivery checks') }}</strong>
+                  <span>{{ deliveryChecks.filter(item => item.done).length }}/{{ deliveryChecks.length }}</span>
+                </div>
+                <div class="delivery-check-list">
+                  <div v-for="item in deliveryChecks" :key="item.key" :class="['delivery-check', { done: item.done }]">
+                    <span class="delivery-check-icon">
+                      <svg v-if="item.done" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span v-else></span>
+                    </span>
+                    <div><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="delivery-panel delivery-specs">
+                <div class="delivery-panel-head"><strong>{{ lt('交付信息', 'Delivery details') }}</strong></div>
+                <dl>
+                  <div><dt>{{ lt('格式', 'Format') }}</dt><dd>MP4 · H.264</dd></div>
+                  <div><dt>{{ lt('版本', 'Version') }}</dt><dd>MASTER 01</dd></div>
+                  <div><dt>{{ lt('镜头数', 'Shots') }}</dt><dd>{{ sbs.length }}</dd></div>
+                  <div><dt>{{ lt('总时长', 'Runtime') }}</dt><dd>{{ formatTime(totalDuration) }}</dd></div>
+                </dl>
+              </div>
+
+              <a v-if="mergeUrl" :href="'/' + mergeUrl" download class="delivery-download">
+                <span><Download :size="18" /></span>
+                <div><strong>{{ lt('下载最终成片', 'Download final master') }}</strong><small>MP4 · MASTER 01</small></div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </a>
+              <button v-else class="delivery-download is-disabled" :disabled="composedCount === 0" @click="doMerge">
+                <span><Sparkles :size="18" /></span>
+                <div><strong>{{ lt('生成最终成片', 'Build final master') }}</strong><small>{{ composedCount }}/{{ sbs.length }} {{ lt('镜头可用', 'shots ready') }}</small></div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </aside>
           </div>
         </div>
       </div>
@@ -1439,9 +1638,11 @@
 import { toast } from 'vue-sonner'
 import {
   Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download, Loader2,
+  Activity, Sparkles, Film,
 } from 'lucide-vue-next'
 import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
 import { useAgent } from '~/composables/useAgent'
+import { useLingLocale } from '~/composables/useLingLocale'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 definePageMeta({ layout: 'studio' })
@@ -1449,6 +1650,8 @@ definePageMeta({ layout: 'studio' })
 const route = useRoute()
 const dramaId = Number(route.params.id)
 const episodeNumber = Number(route.params.episodeNumber)
+const { locale } = useLingLocale()
+const lt = (zh, en) => locale.value === 'en-US' ? en : zh
 
 const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]), sbs = ref([]), mergeData = ref(null)
 const panel = ref('script')
@@ -1507,10 +1710,83 @@ const failedVideoMessages = ref({})
 const failedComposeMessages = ref({})
 const imageViewer = ref({ open: false, src: '', title: '' })
 
+const episodeDisplayTitle = computed(() => (
+  episode.value?.title || lt(`第 ${episodeNumber} 集`, `Episode ${episodeNumber}`)
+))
+const activeJobCount = computed(() => (
+  Number(rn.value)
+  + pendingCharImageIds.value.length
+  + pendingSceneImageIds.value.length
+  + pendingShotFrameKeys.value.length
+  + pendingVideoIds.value.length
+  + pendingComposeIds.value.length
+))
+const failedJobCount = computed(() => (
+  Object.keys(failedVideoMessages.value).length + Object.keys(failedComposeMessages.value).length
+))
+const productionHealthLabel = computed(() => {
+  if (failedJobCount.value) return lt(`${failedJobCount.value} 项需处理`, `${failedJobCount.value} need attention`)
+  if (activeJobCount.value) return lt(`${activeJobCount.value} 项运行中`, `${activeJobCount.value} running`)
+  if (mergeUrl.value) return lt('成片已就绪', 'Final cut ready')
+  return lt('制作系统就绪', 'Production ready')
+})
+
+function ratioPercent(value, total) {
+  if (!total) return 0
+  return Math.min(100, Math.round((Number(value || 0) / Number(total)) * 100))
+}
+
+function shotCompletionPercent(sb) {
+  if (hasComposed(sb)) return 100
+  if (hasVid(sb)) return 68
+  if (hasImg(sb)) return 34
+  return 8
+}
+
+function shotWorkflowState(sb) {
+  if (videoFailMessage(sb.id) || composeFailMessage(sb.id)) return { tone: 'error', label: lt('需处理', 'Issue') }
+  if (isPendingCompose(sb.id)) return { tone: 'running', label: lt('合成中', 'Mixing') }
+  if (isPendingVideo(sb.id)) return { tone: 'running', label: lt('生成中', 'Rendering') }
+  if (hasComposed(sb)) return { tone: 'ready', label: lt('可交付', 'Delivery ready') }
+  if (hasVid(sb)) return { tone: 'video', label: lt('待合成', 'Ready to mix') }
+  if (hasImg(sb)) return { tone: 'image', label: lt('画面就绪', 'Frame ready') }
+  return { tone: 'draft', label: lt('待制作', 'To produce') }
+}
+
+function mainStageLabel(stageId) {
+  return {
+    script: lt('剧本开发', 'Script'),
+    assets: lt('视觉资产', 'Visual Assets'),
+    storyboard: lt('分镜制作', 'Shot Production'),
+    export: lt('审片交付', 'Review & Delivery'),
+  }[stageId] || lt('工作台', 'Workspace')
+}
+
+function mainStageDescription(stageId) {
+  return {
+    script: lt('故事到结构化剧本', 'Story to structured script'),
+    assets: lt('角色、场景与声音', 'Characters, worlds, voices'),
+    storyboard: lt('画面、视频与合成', 'Frames, video, final mix'),
+    export: lt('整集检查与下载', 'Final review and download'),
+  }[stageId] || ''
+}
+
+function formatTime(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds || 0)))
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
+}
+
+function openShotForReview(sb) {
+  selectedSb.value = sb
+  panel.value = 'production'
+  prodTab.value = 'compose'
+}
+
 function configLabel(config) {
   if (!config) return '未配置'
   let modelName = ''
-  try { const m = JSON.parse(config.model || '[]'); modelName = Array.isArray(m) ? (m[0] || '') : (m || '') } catch { modelName = config.model || '' }
+  if (Array.isArray(config.model)) modelName = config.model[0] || ''
+  else try { const m = JSON.parse(config.model || '[]'); modelName = Array.isArray(m) ? (m[0] || '') : (m || '') } catch { modelName = config.model || '' }
   return modelName ? `${config.name} · ${modelName} (${config.provider})` : `${config.name} (${config.provider})`
 }
 
@@ -2080,6 +2356,54 @@ const shotImgCount = computed(() => sbs.value.filter(s => s.first_frame_image ||
 const shotVidCount = computed(() => sbs.value.filter(s => s.video_url || s.videoUrl).length)
 const visualCharTotal = computed(() => visualChars.value.length)
 
+const deliveryChecks = computed(() => [
+  {
+    key: 'storyboard',
+    label: lt('分镜结构完整', 'Storyboard structure'),
+    detail: lt(`${sbs.value.length} 个镜头已进入制作`, `${sbs.value.length} shots in production`),
+    done: !!sbs.value.length,
+  },
+  {
+    key: 'frames',
+    label: lt('镜头画面齐备', 'Shot frames ready'),
+    detail: lt(`${shotImgCount.value}/${sbs.value.length} 个镜头有画面`, `${shotImgCount.value}/${sbs.value.length} shots have frames`),
+    done: !!sbs.value.length && shotImgCount.value === sbs.value.length,
+  },
+  {
+    key: 'videos',
+    label: lt('动态镜头齐备', 'Video takes ready'),
+    detail: lt(`${shotVidCount.value}/${sbs.value.length} 个视频已生成`, `${shotVidCount.value}/${sbs.value.length} videos generated`),
+    done: !!sbs.value.length && shotVidCount.value === sbs.value.length,
+  },
+  {
+    key: 'mix',
+    label: lt('字幕与音画已合成', 'Picture and sound mixed'),
+    detail: lt(`${composedCount.value}/${sbs.value.length} 个镜头已完成`, `${composedCount.value}/${sbs.value.length} shots composed`),
+    done: !!sbs.value.length && composedCount.value === sbs.value.length,
+  },
+  {
+    key: 'master',
+    label: lt('整集母版可下载', 'Episode master downloadable'),
+    detail: mergeUrl.value ? lt('MP4 成片已经生成', 'MP4 final cut is available') : lt('等待整集拼接', 'Waiting for final assembly'),
+    done: !!mergeUrl.value,
+  },
+])
+const deliveryReadiness = computed(() => ratioPercent(
+  deliveryChecks.value.filter(item => item.done).length,
+  deliveryChecks.value.length,
+))
+const deliveryReadinessLabel = computed(() => {
+  if (deliveryReadiness.value === 100) return lt('可以公开交付', 'Ready to deliver')
+  if (deliveryReadiness.value >= 60) return lt('接近完成', 'Nearly ready')
+  return lt('制作进行中', 'In production')
+})
+const mergeStatusLabel = computed(() => {
+  const status = mergeData.value?.status
+  if (status === 'processing' || status === 'pending') return lt('整集生成中', 'ASSEMBLING')
+  if (status === 'failed') return lt('生成失败', 'ASSEMBLY ISSUE')
+  return lt('等待生成', 'AWAITING MASTER')
+})
+
 const prodTabDefs = computed(() => [
   { id: 'chars', label: '角色形象', icon: Users, badge: visualCharTotal.value ? `${charImgCount.value}/${visualCharTotal.value}` : '' },
   { id: 'scenes', label: '场景图片', icon: MapPin, badge: sceneImgCount.value ? `${sceneImgCount.value}/${scenes.value.length}` : '' },
@@ -2286,12 +2610,16 @@ function goSubStep(key) {
 }
 
 const pipelineProgress = computed(() => {
+  if (mergeUrl.value) return 11
   let p = 0
   if (rawContent.value) p++
   if (scriptContent.value) p++
   if (chars.value.length) p++
   if (charsVoiced.value) p++
   if (sbs.value.length) p++
+  if (sbs.value.length
+    && (!visualCharTotal.value || charImgCount.value === visualCharTotal.value)
+    && (!scenes.value.length || sceneImgCount.value === scenes.value.length)) p++
   if (sbs.value.length && (!ttsEligibleCount.value || ttsGeneratedCount.value === ttsEligibleCount.value)) p++
   if (sbs.value.some(s => s.composed_image || s.composedImage)) p++
   if (sbs.value.some(s => s.video_url || s.videoUrl)) p++
@@ -2299,6 +2627,7 @@ const pipelineProgress = computed(() => {
   if (mergeUrl.value) p++
   return p
 })
+const pipelineProgressPercent = computed(() => ratioPercent(pipelineProgress.value, 11))
 
 const currentStageLabel = computed(() => {
   if (panel.value === 'script') return `剧本阶段 · ${stepLabels[scriptStep.value]}`
@@ -2629,8 +2958,8 @@ function getShotReferenceImages(sb) {
     const char = chars.value.find(item => item.id === charId)
     pushRef(char?.image_url || char?.imageUrl)
   }
-  for (const ref of getRefs(sb)) {
-    pushRef(ref)
+  for (const referenceImage of getRefs(sb)) {
+    pushRef(referenceImage)
   }
   const first = getFirstFrame(sb)
   const last = getLastFrame(sb)
@@ -2897,73 +3226,134 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding: 14px;
-  gap: 12px;
+  padding: 12px;
+  gap: 10px;
   background:
-    radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 28%),
-    linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0)),
-    var(--bg-base);
+    radial-gradient(circle at 12% -10%, rgba(65, 125, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 96% 0%, rgba(51, 204, 190, 0.1), transparent 22%),
+    linear-gradient(180deg, #edf2f9 0%, #f6f8fc 62%, #edf2f8 100%);
 }
 
 .studio-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 20px;
   flex-shrink: 0;
-  padding: 8px 12px;
-  border-radius: 18px;
-  background: rgba(252, 253, 255, 0.84);
-  border: 1px solid rgba(27, 41, 64, 0.08);
-  box-shadow: 0 14px 36px rgba(20, 32, 54, 0.07), 0 3px 10px rgba(20, 32, 54, 0.04);
-  backdrop-filter: blur(16px);
+  min-height: 76px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 72% -60%, rgba(86, 135, 255, 0.28), transparent 44%),
+    linear-gradient(118deg, #08111f 0%, #101f38 52%, #142b4d 100%);
+  border: 1px solid rgba(119, 164, 255, 0.2);
+  box-shadow: 0 18px 40px rgba(10, 23, 43, 0.2), inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
 }
 
-.studio-topbar-main,
+.studio-topbar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image: linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(90deg, transparent, #000 45%, #000);
+}
+
 .sidebar,
 .main {
-  background: rgba(252, 253, 255, 0.84);
   border: 1px solid rgba(27, 41, 64, 0.08);
-  box-shadow: 0 18px 48px rgba(20, 32, 54, 0.08), 0 4px 14px rgba(20, 32, 54, 0.05);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 48px rgba(20, 32, 54, 0.09), 0 4px 14px rgba(20, 32, 54, 0.04);
+}
+
+.main {
+  --bg-base: #f2f5fa;
+  --bg-0: #ffffff;
+  --bg-1: #f8fbff;
+  --bg-2: #eef3f9;
+  --bg-3: #d7e0ec;
+  --bg-hover: #edf3fb;
+  --bg-active: #e5edf8;
+  --bg-input: rgba(255,255,255,0.92);
+  --bg-surface: rgba(255,255,255,0.86);
+  --border: #dbe4f0;
+  --border-strong: #bcc9d9;
+  --border-focus: #3f6fd9;
+  --text-0: #182132;
+  --text-1: #2c3850;
+  --text-2: #60718a;
+  --text-3: #8fa0b8;
+  --accent: #4c7dff;
+  --accent-dark: #355fce;
+  --accent-bg: rgba(76,125,255,0.1);
+  --accent-text: #2548a6;
+  --accent-glow: rgba(76,125,255,0.2);
+  --success: #3f8a63;
+  --success-bg: rgba(63,138,99,0.1);
+  --error: #d24f66;
+  --error-bg: rgba(210,79,102,0.1);
+  --info: #3a73cc;
+  --warning: #a67b2d;
+  background: rgba(252, 253, 255, 0.9);
+  backdrop-filter: blur(18px);
 }
 
 .studio-topbar-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 0;
   border: 0;
   box-shadow: none;
   backdrop-filter: none;
   background: transparent;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar-back {
   width: auto;
-  min-width: 76px;
-  padding: 0 8px;
-  height: 28px;
+  min-width: 92px;
+  padding: 0 12px;
+  height: 34px;
   border-radius: 999px;
   white-space: nowrap;
   font-size: 11px;
+  color: rgba(225, 235, 252, 0.78);
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: none;
 }
+.topbar-back:hover { color: #fff; background: rgba(255,255,255,0.12); }
 
 .studio-identity {
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
 }
 .studio-overline {
-  display: none;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: rgba(160, 189, 238, 0.76);
+}
+.studio-brand-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5bd8c9;
+  box-shadow: 0 0 0 4px rgba(91,216,201,0.12), 0 0 18px rgba(91,216,201,0.7);
 }
 
 .studio-title-row {
@@ -2974,28 +3364,49 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 }
 
 .studio-title {
-  font-size: 14px;
-  line-height: 1;
-  letter-spacing: -0.04em;
+  font-size: 17px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   white-space: nowrap;
+  color: #f8fbff;
+  font-family: var(--font-display);
 }
 
 .studio-episode-chip {
   display: inline-flex;
   align-items: center;
-  height: 20px;
-  padding: 0 7px;
+  height: 21px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: rgba(19, 51, 121, 0.08);
-  color: var(--accent-text);
+  background: rgba(104, 150, 255, 0.16);
+  border: 1px solid rgba(128, 168, 255, 0.2);
+  color: #bcd1ff;
   font-size: 9px;
   font-weight: 700;
 }
 
+.studio-live-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 21px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 222, 188, 0.16);
+  background: rgba(46, 175, 140, 0.1);
+  color: #81e3c7;
+  font-size: 9px;
+  font-weight: 700;
+}
+.studio-live-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.studio-live-state.busy { color: #8eb8ff; border-color: rgba(92,142,255,0.2); background: rgba(62,108,224,0.13); }
+.studio-live-state.issue { color: #ff9d9d; border-color: rgba(255,106,106,0.2); background: rgba(191,58,70,0.15); }
+.studio-live-state.busy .studio-live-dot { animation: pulse 1.4s infinite; }
+
 .studio-meta-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -3003,11 +3414,11 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .studio-meta-pill {
   display: inline-flex;
   align-items: center;
-  height: 18px;
-  padding: 0 6px;
+  height: 19px;
+  padding: 0 7px;
   border-radius: 999px;
-  background: rgba(18, 25, 42, 0.05);
-  color: var(--text-2);
+  background: rgba(255,255,255,0.08);
+  color: rgba(222,232,250,0.84);
   font-size: 8px;
   font-weight: 600;
   white-space: nowrap;
@@ -3023,7 +3434,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 }
 .studio-meta-inline {
   font-size: 9px;
-  color: var(--text-3);
+  color: rgba(172, 193, 226, 0.7);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -3031,24 +3442,46 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .studio-topbar-side {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 14px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
+
+.topbar-progress { display: flex; align-items: center; gap: 9px; padding-right: 14px; border-right: 1px solid rgba(255,255,255,0.1); }
+.topbar-progress-ring {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(#5bd8c9 var(--progress), rgba(255,255,255,0.09) 0);
+  position: relative;
+}
+.topbar-progress-ring::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #12233d; }
+.topbar-progress-ring span { position: relative; z-index: 1; font-family: var(--font-mono); font-size: 10px; color: #fff; font-weight: 800; }
+.topbar-progress-ring span::after { content: '%'; font-size: 6px; color: rgba(255,255,255,0.55); }
+.topbar-progress-copy { display: flex; flex-direction: column; gap: 2px; min-width: 92px; }
+.topbar-progress-copy strong { font-size: 10px; color: #f1f6ff; }
+.topbar-progress-copy span { font-size: 8.5px; color: rgba(171,193,228,0.72); }
 
 .studio-actions {
   display: flex;
   gap: 6px;
 }
 .studio-topbar .btn {
-  height: 28px;
-  padding: 0 10px;
+  height: 34px;
+  padding: 0 12px;
   font-size: 11px;
   white-space: nowrap;
+  color: rgba(226,235,250,0.88);
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.07);
+  box-shadow: none;
 }
+.studio-topbar .btn:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.studio-topbar .btn-primary { color: #fff; border: 0; background: linear-gradient(135deg, #5a8aff, #3869e8); box-shadow: 0 8px 22px rgba(54,103,230,0.3); }
+.locale-btn { min-width: 58px; }
 
 .studio-body {
   display: grid;
-  grid-template-columns: 244px minmax(0, 1fr);
+  grid-template-columns: 224px minmax(0, 1fr);
   gap: 10px;
   min-height: 0;
   flex: 1;
@@ -3062,7 +3495,12 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  border-radius: 28px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(68,113,218,0.2), transparent 30%),
+    linear-gradient(180deg, #0d1829, #101c2f 58%, #0b1626);
+  border-color: rgba(61, 88, 130, 0.34);
+  box-shadow: 0 18px 44px rgba(9, 20, 38, 0.18), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .back-btn {
   width: 40px; height: 40px; flex-shrink: 0;
@@ -3075,10 +3513,10 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .back-btn:hover { background: #fff; color: var(--text-0); }
 
 /* Pipeline Nav */
-.pipeline { flex: 1; overflow-y: auto; padding: 16px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.pipeline { flex: 1; overflow-y: auto; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 14px; }
 .pipe-section { display: flex; flex-direction: column; gap: 4px; }
 .pipe-section-label {
-  font-size: 10px; font-weight: 700; color: #95a1b6;
+  font-size: 9px; font-weight: 800; color: rgba(145, 170, 211, 0.52);
   text-transform: uppercase; letter-spacing: 0.1em;
   padding: 2px 8px 3px;
 }
@@ -3087,17 +3525,17 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   padding: 7px 10px;
   border-radius: 17px;
   font-size: 12px; font-weight: 600;
-  background: none; border: 1px solid transparent; color: var(--text-2); cursor: pointer;
+  background: none; border: 1px solid transparent; color: rgba(183, 202, 231, 0.72); cursor: pointer;
   transition: all 0.14s; width: 100%; text-align: left;
 }
-.pipe-item:hover { background: rgba(255,255,255,0.3); color: var(--text-0); }
+.pipe-item:hover { background: rgba(255,255,255,0.055); color: #f3f7ff; }
 .pipe-item.active {
-  background: rgba(255,255,255,0.94);
-  color: var(--text-0);
-  border-color: rgba(27, 41, 64, 0.05);
-  box-shadow: 0 8px 18px rgba(19, 33, 56, 0.045);
+  background: linear-gradient(135deg, rgba(68,112,221,0.2), rgba(74,139,226,0.08));
+  color: #fff;
+  border-color: rgba(105,149,255,0.18);
+  box-shadow: inset 3px 0 0 #6590ff, 0 10px 22px rgba(2,10,26,0.14);
 }
-.pipe-item.done { color: var(--success); }
+.pipe-item.done { color: #80cbb6; }
 .pipe-item-sub {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -3119,13 +3557,13 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .pipe-icon {
   width: 17px; height: 17px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(246,248,252,0.98); border: 1px solid rgba(18,25,42,0.08);
-  color: #aab4c6; flex-shrink: 0; transition: all 0.15s;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09);
+  color: rgba(174,195,227,0.66); flex-shrink: 0; transition: all 0.15s;
   position: relative;
   z-index: 1;
 }
-.pipe-item.active .pipe-icon { background: rgba(19, 51, 121, 0.07); border-color: rgba(19, 51, 121, 0.1); color: var(--accent-text); }
-.pipe-item.done .pipe-icon { background: rgba(45, 122, 69, 0.96); border-color: rgba(45,122,69,0.18); color: #fff; }
+.pipe-item.active .pipe-icon { background: rgba(92, 139, 255, 0.22); border-color: rgba(119, 159, 255, 0.3); color: #dce8ff; }
+.pipe-item.done .pipe-icon { background: rgba(65, 170, 137, 0.86); border-color: rgba(105,211,178,0.24); color: #fff; }
 .icon-active { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; color: #fff !important; }
 .icon-done { background: var(--success) !important; border-color: var(--success) !important; color: #fff !important; }
 
@@ -3134,7 +3572,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .pipe-sub {
   font-size: 8.5px;
   line-height: 1.35;
-  color: var(--text-3);
+  color: rgba(145, 169, 205, 0.58);
   font-weight: 500;
 }
 .pipe-badge {
@@ -3148,10 +3586,10 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 /* Sidebar Bottom */
 .sidebar-bottom {
   padding: 12px 14px 14px;
-  border-top: 1px solid rgba(27, 41, 64, 0.08);
+  border-top: 1px solid rgba(255,255,255,0.07);
   display: flex; flex-direction: column; gap: 8px;
   flex-shrink: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.72));
+  background: linear-gradient(180deg, rgba(7,15,28,0.12), rgba(5,13,24,0.52));
 }
 .sidebar-jumper {
   display: flex;
@@ -3184,28 +3622,92 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 }
 .progress-wrap { display: flex; flex-direction: column; gap: 5px; }
 .progress-head { display: flex; justify-content: space-between; }
-.progress-label { font-size: 10.5px; color: var(--text-3); font-weight: 500; }
-.progress-val { font-size: 10.5px; color: var(--text-2); font-family: var(--font-mono); font-weight: 600; }
-.progress-track { height: 6px; background: rgba(194, 207, 227, 0.92); border-radius: 99px; overflow: hidden; }
+.progress-label { font-size: 10.5px; color: rgba(165,188,222,0.66); font-weight: 500; }
+.progress-val { font-size: 10.5px; color: #dce8fa; font-family: var(--font-mono); font-weight: 600; }
+.progress-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent-gradient); border-radius: 99px; transition: width 0.5s var(--ease-out); }
 .refresh-btn {
   width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 8px; font-size: 11.5px; color: var(--text-2);
-  background: rgba(255,255,255,0.86); border: 1px solid rgba(27, 41, 64, 0.08); border-radius: 999px;
+  padding: 8px; font-size: 11.5px; color: rgba(182,202,232,0.74);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px;
   cursor: pointer; transition: all 0.15s;
 }
-.refresh-btn:hover { background: #fff; color: var(--text-0); }
+.refresh-btn:hover { background: rgba(255,255,255,0.09); color: #fff; }
 
 /* ===== Main Content ===== */
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; border-radius: 30px; }
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; border-radius: 24px; }
 .content-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; min-height: 0; }
+.main-stage-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(27,41,64,0.08);
+  background: rgba(255,255,255,0.7);
+  flex-shrink: 0;
+}
+.main-stage-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 4px 22px 4px 5px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-3);
+}
+.main-stage-index {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  border: 1px solid rgba(30,48,78,0.1);
+  background: #f4f7fb;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #9aa9be;
+  transition: all 0.18s ease;
+}
+.main-stage-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.main-stage-copy strong { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.main-stage-copy small { font-size: 8.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.main-stage-connector {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background: rgba(75,97,132,0.16);
+}
+.main-stage-connector::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-top: 1px solid rgba(75,97,132,0.24);
+  border-right: 1px solid rgba(75,97,132,0.24);
+  transform: rotate(45deg);
+}
+.main-stage-node:hover .main-stage-index { border-color: rgba(61,104,208,0.22); color: var(--accent); }
+.main-stage-node.active .main-stage-index { color: #fff; border-color: transparent; background: linear-gradient(135deg,#5c8bff,#3869df); box-shadow: 0 7px 16px rgba(53,98,215,0.22); }
+.main-stage-node.active .main-stage-copy strong { color: #244aab; }
+.main-stage-node.done:not(.active) .main-stage-index { color: #fff; border-color: transparent; background: #43a27f; }
+.main-stage-node.done:not(.active) .main-stage-copy strong { color: #347b62; }
 .stage-subnav {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-bottom: 1px solid rgba(27, 41, 64, 0.08);
-  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.52));
+  background: linear-gradient(180deg, rgba(246,249,253,0.96), rgba(240,245,251,0.7));
   overflow-x: auto;
   flex-shrink: 0;
 }
@@ -3213,13 +3715,13 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
-  padding: 0 11px;
+  height: 27px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid rgba(27, 41, 64, 0.08);
   background: rgba(255,255,255,0.7);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -3433,7 +3935,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 
 /* Split layout (storyboard) */
 .split-layout { flex: 1; display: flex; min-height: 0; overflow: hidden; }
-.shot-list { width: 296px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border); background: var(--bg-0); }
+.shot-list { width: 350px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border); background: linear-gradient(180deg,#f5f8fc,#f8fafc); }
 .shot-list-head {
   position: sticky;
   top: 0;
@@ -3449,22 +3951,55 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 }
 .shot-list-title { font-size: 13px; font-weight: 700; color: var(--text-0); }
 .shot-list-sub { margin-top: 3px; font-size: 11px; color: var(--text-3); line-height: 1.45; }
-.shot-list-body { padding: 6px; }
+.shot-list-body { padding: 7px; }
 .shot-item {
-  position: relative; padding: 10px 11px; cursor: pointer;
+  position: relative; padding: 7px; cursor: pointer;
   border: 1px solid transparent; border-left: 3px solid transparent;
   transition: all 0.15s;
-  display: flex; flex-direction: column; gap: 5px;
-  border-radius: 14px;
+  display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 9px;
+  border-radius: 15px;
 }
 .shot-item + .shot-item { margin-top: 6px; }
 .shot-item:hover { background: var(--bg-hover); border-color: rgba(27, 41, 64, 0.06); }
 .shot-item.active {
-  background: var(--bg-0);
+  background: #fff;
   border-left-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent-glow);
+  box-shadow: 0 8px 22px rgba(27,53,98,0.08), inset 0 0 0 1px rgba(72,116,224,0.1);
   z-index: 1;
 }
+.shot-item-media {
+  position: relative;
+  align-self: stretch;
+  min-height: 78px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: linear-gradient(145deg,#16243b,#0b1423);
+  border: 1px solid rgba(29,48,78,0.11);
+}
+.shot-item-media img { width: 100%; height: 100%; min-height: 78px; object-fit: cover; display: block; }
+.shot-item-media::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg,transparent 50%,rgba(4,10,19,0.62)); }
+.shot-item-media-empty { width: 100%; height: 100%; min-height: 78px; display: grid; place-items: center; color: rgba(180,201,232,0.46); }
+.shot-item-time { position: absolute; z-index: 1; right: 5px; bottom: 5px; padding: 2px 5px; border-radius: 5px; background: rgba(4,10,20,0.7); color: #fff; font-size: 8px; font-family: var(--font-mono); }
+.shot-item-state,
+.prod-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  font-size: 7.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.shot-item-state { position: absolute; z-index: 2; top: 5px; left: 5px; padding: 3px 6px; color: #fff; background: rgba(6,13,24,0.72); backdrop-filter: blur(5px); }
+.shot-item-state > span,
+.prod-state-badge > span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.shot-item-state.is-ready, .prod-state-badge.is-ready, .detail-workflow-state.is-ready { color: #71e0bf !important; }
+.shot-item-state.is-running, .prod-state-badge.is-running, .detail-workflow-state.is-running { color: #8fb5ff !important; }
+.shot-item-state.is-error, .prod-state-badge.is-error, .detail-workflow-state.is-error { color: #ff9d9d !important; }
+.shot-item-state.is-video, .prod-state-badge.is-video, .detail-workflow-state.is-video { color: #b8a8ff !important; }
+.shot-item-state.is-image, .prod-state-badge.is-image, .detail-workflow-state.is-image { color: #85cfff !important; }
+.shot-item-state.is-draft, .prod-state-badge.is-draft, .detail-workflow-state.is-draft { color: #c2cad7 !important; }
+.shot-item-copy { min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 2px 1px 0; }
 .shot-item-header { display: flex; align-items: center; gap: 8px; }
 .shot-num {
   font-size: 11px; font-family: var(--font-mono); font-weight: 700;
@@ -3473,6 +4008,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   letter-spacing: 0.03em;
 }
 .shot-item.active .shot-num { background: var(--accent); color: #fff; }
+.shot-type-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8.5px; color: var(--text-3); }
 .shot-status { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
 .shot-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bg-3); flex-shrink: 0; }
 .shot-dot.has-img { background: var(--success); }
@@ -3481,7 +4017,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .shot-body { }
 .shot-desc { font-size: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-1); }
 .shot-item.active .shot-desc { color: var(--text-0); }
-.shot-meta { display: flex; align-items: center; gap: 6px; }
+.shot-meta { display: flex; align-items: center; gap: 6px; min-height: 13px; }
 .shot-location {
   font-size: 10px;
   color: var(--text-3);
@@ -3495,6 +4031,8 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   padding-left: 2px; border-left: 2px solid var(--border);
   padding-left: 6px;
 }
+.shot-progress-track { height: 3px; margin-top: auto; overflow: hidden; border-radius: 99px; background: #e8edf5; }
+.shot-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#4e7fff,#58cbbd); }
 
 .detail-panel { flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-width: 0; }
 .detail-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -3504,20 +4042,39 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .detail-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 .detail-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.9fr);
-  gap: 12px;
+  grid-template-columns: minmax(300px, 1.15fr) minmax(280px, 0.85fr);
+  gap: 0;
+  overflow: hidden;
   padding: 12px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(20,39,82,0.08), rgba(255,255,255,0.68));
-  border: 1px solid rgba(27, 41, 64, 0.08);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0d1829, #13243e);
+  border: 1px solid rgba(77,112,172,0.22);
+  box-shadow: 0 14px 34px rgba(9,21,40,0.16);
 }
-.detail-hero-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.detail-feature-media { position: relative; aspect-ratio: 16/9; min-height: 210px; overflow: hidden; border-radius: 14px; background: #050a12; border: 1px solid rgba(255,255,255,0.08); }
+.detail-feature-media video,
+.detail-feature-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail-feature-empty { width: 100%; height: 100%; min-height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: rgba(175,198,232,0.52); font-size: 10px; }
+.detail-feature-overlay { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.detail-feature-overlay span,
+.detail-feature-overlay strong { padding: 4px 7px; border-radius: 6px; color: rgba(235,242,255,0.85); background: rgba(4,10,19,0.65); backdrop-filter: blur(8px); font-size: 7.5px; letter-spacing: .08em; }
+.detail-feature-overlay strong { font-size: 9px; font-family: var(--font-mono); }
+.detail-hero-copy { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; padding: 10px 12px 10px 18px; }
+.detail-hero-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .detail-hero-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--text-3);
+  text-transform: uppercase; color: rgba(139,170,220,0.66);
 }
-.detail-hero-text { font-size: 13px; color: var(--text-1); line-height: 1.7; }
+.detail-hero-title { margin-top: 3px; font-size: 17px; line-height: 1.2; font-family: var(--font-display); color: #f3f7ff; }
+.detail-workflow-state { flex: 0 0 auto; padding: 4px 7px; border-radius: 999px; border: 1px solid currentColor; font-size: 8px; font-weight: 800; background: rgba(255,255,255,0.04); }
+.detail-hero-text { font-size: 11px; color: rgba(204,218,241,0.74); line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .detail-status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.detail-hero .tag { background: rgba(255,255,255,0.07); color: rgba(213,225,245,0.72); }
+.detail-readiness { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin-top: 2px; }
+.detail-readiness > div { display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; background: rgba(255,255,255,0.035); }
+.detail-readiness span { font-size: 7.5px; color: rgba(157,180,215,0.62); }
+.detail-readiness strong { font-size: 8.5px; color: rgba(185,199,222,0.62); }
+.detail-readiness strong.ready { color: #67d6b5; }
 .detail-preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .detail-preview-card { display: flex; flex-direction: column; gap: 6px; }
 .detail-preview-title { font-size: 11px; font-weight: 700; color: var(--text-2); }
@@ -3607,8 +4164,52 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .prod-tab-badge { font-size: 10px; font-family: var(--font-mono); padding: 0 4px; background: var(--bg-3); border-radius: 99px; }
 .prod-tab.active .prod-tab-badge { background: var(--accent-bg); color: var(--accent-text); }
 
+.production-overview {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(520px, 1.6fr);
+  gap: 14px;
+  align-items: stretch;
+  margin: 10px 14px 0;
+  padding: 11px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(27,49,86,0.1);
+  background:
+    radial-gradient(circle at 0 0, rgba(75,126,255,0.11), transparent 38%),
+    linear-gradient(135deg, rgba(245,248,254,0.98), rgba(250,252,255,0.88));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  flex-shrink: 0;
+}
+.production-overview-copy { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 1px 5px; }
+.production-overview-kicker { display: flex; align-items: center; gap: 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; color: #4d70bc; }
+.production-overview-copy > strong { font-size: 12px; color: var(--text-0); }
+.production-overview-copy > span { font-size: 9.5px; color: var(--text-3); }
+.production-overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 7px; }
+.production-metric {
+  position: relative;
+  min-width: 0;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(28,48,82,0.08);
+  border-radius: 13px;
+  background: rgba(255,255,255,0.7);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.production-metric:hover { transform: translateY(-1px); border-color: rgba(60,104,214,0.18); box-shadow: 0 8px 18px rgba(23,48,92,0.07); }
+.production-metric > span { display: block; font-size: 8.5px; font-weight: 700; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.production-metric > strong { display: block; margin-top: 3px; font-size: 17px; line-height: 1; font-family: var(--font-display); color: var(--text-0); }
+.production-metric > strong small { margin-left: 2px; font-size: 9px; color: var(--text-3); font-family: var(--font-mono); }
+.production-metric > i { position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 0 99px 99px 0; background: linear-gradient(90deg,#4c7dff,#5bd8c9); }
+.production-metric-status { cursor: default; }
+.production-metric-status > small { display: block; margin-top: 2px; font-size: 8px; color: #4a8c72; }
+.production-metric-status.active > strong { color: #3869df; }
+.production-metric-status.active > small { color: #5a76aa; }
+.production-metric-status.issue > strong,
+.production-metric-status.issue > small { color: var(--error); }
+
 /* Production content */
-.prod-content { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.prod-content { flex: 1; overflow-y: auto; padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 12px; }
 .prod-section-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .dub-grid { display: flex; flex-direction: column; gap: 10px; }
@@ -3734,6 +4335,16 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .prod-idx {
   position: absolute; top: 5px; left: 5px; font-size: 10px; font-weight: 700;
   font-family: var(--font-mono); background: rgba(0,0,0,0.5); color: #fff; padding: 1px 5px; border-radius: 3px;
+}
+.prod-state-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px 7px;
+  color: #fff;
+  background: rgba(4,10,19,0.68);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(6px);
 }
 .prod-overlay-badge {
   position: absolute; bottom: 5px; right: 5px; font-size: 10px; font-weight: 600;
@@ -4137,20 +4748,92 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 }
 
 /* Export */
-.export-split { flex: 1; display: flex; min-height: 0; }
-.export-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; }
-.export-video { max-width: 720px; width: 100%; border-radius: var(--radius-lg); background: #000; }
-.export-bar { display: flex; align-items: center; gap: 12px; margin-top: 16px; width: 100%; max-width: 720px; }
-.export-list { width: 240px; flex-shrink: 0; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-.export-list-head { padding: 11px 14px; font-size: 11px; font-weight: 700; color: var(--text-3); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.06em; }
-.export-list-body { flex: 1; overflow-y: auto; padding: 6px; }
-.exp-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: var(--radius); }
-.exp-row:hover { background: var(--bg-hover); }
+.delivery-workspace { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; background: linear-gradient(180deg,#f7f9fc,#f1f5fa); }
+.delivery-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 13px; }
+.delivery-kicker { display: flex; align-items: center; gap: 7px; font-size: 8.5px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: #5878b6; }
+.delivery-kicker span { width: 15px; height: 1px; background: #5c83da; }
+.delivery-header h2 { margin: 4px 0 0; font-size: 21px; line-height: 1.2; letter-spacing: -.025em; color: #15223a; }
+.delivery-header p { margin: 4px 0 0; font-size: 10.5px; color: var(--text-3); }
+.delivery-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.delivery-grid { display: grid; grid-template-columns: minmax(0,1fr) 292px; gap: 13px; min-height: 0; }
+.review-suite { min-width: 0; padding: 10px; border-radius: 21px; background: linear-gradient(145deg,#0a1321,#101d31); border: 1px solid rgba(61,88,133,.28); box-shadow: 0 18px 44px rgba(10,22,42,.18); }
+.review-monitor { position: relative; overflow: hidden; aspect-ratio: 16/9; max-height: min(52vh,620px); border-radius: 14px; background: #03070d; border: 1px solid rgba(255,255,255,.08); }
+.export-video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+.review-monitor-empty { width: 100%; height: 100%; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: rgba(190,207,233,.72); }
+.review-monitor-empty strong { font-size: 15px; color: #eef4ff; }
+.review-monitor-empty > span { font-size: 10px; color: rgba(157,179,212,.66); }
+.review-monitor-empty .btn { margin-top: 8px; }
+.review-monitor-orbit { width: 66px; height: 66px; display: grid; place-items: center; border-radius: 50%; color: #87aaff; background: radial-gradient(circle,rgba(75,119,226,.28),rgba(57,91,173,.05)); border: 1px solid rgba(112,151,246,.18); box-shadow: 0 0 0 12px rgba(83,124,224,.04),0 0 38px rgba(74,119,232,.16); }
+.review-monitor-topline { position: absolute; left: 9px; right: 9px; top: 9px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.review-monitor-topline > span { padding: 4px 7px; border-radius: 5px; font-size: 7px; font-weight: 800; letter-spacing: .12em; color: rgba(218,230,249,.65); background: rgba(3,8,16,.68); backdrop-filter: blur(8px); }
+.review-live-status { display: inline-flex !important; align-items: center; gap: 5px; color: #93b6ff !important; }
+.review-live-status i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
+.review-live-status.ready { color: #72dcba !important; }
+.review-transport { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 4px 9px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.review-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.review-title-block span { font-size: 7.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(136,163,204,.62); }
+.review-title-block strong { max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #e5edfa; }
+.review-transport-metrics { display: flex; align-items: center; gap: 16px; }
+.review-transport-metrics > span { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-size: 7px; text-transform: uppercase; letter-spacing: .08em; color: rgba(133,159,200,.58); }
+.review-transport-metrics strong { font-size: 10px; color: #dce7f9; font-family: var(--font-mono); }
+.review-timeline-wrap { padding: 10px 3px 3px; }
+.review-timeline-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 7px; color: rgba(160,182,216,.65); }
+.review-timeline-head > div { display: flex; flex-direction: column; gap: 2px; }
+.review-timeline-head strong { font-size: 9px; color: #dbe6f8; }
+.review-timeline-head span { font-size: 7.5px; }
+.review-timeline { display: flex; gap: 4px; overflow-x: auto; padding: 0 0 4px; }
+.timeline-shot { position: relative; flex: var(--shot-flex) 0 58px; min-width: 58px; max-width: 150px; aspect-ratio: 16/9; overflow: hidden; padding: 0; border-radius: 6px; border: 1px solid rgba(255,255,255,.08); background: #172238; cursor: pointer; opacity: .62; transition: opacity .15s ease,border-color .15s ease,transform .15s ease; }
+.timeline-shot:hover { opacity: 1; transform: translateY(-1px); border-color: rgba(112,153,249,.44); }
+.timeline-shot.ready { opacity: .92; border-bottom-color: #55c5a4; }
+.timeline-shot.issue { border-bottom-color: #f2737c; }
+.timeline-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.timeline-shot::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg,transparent 45%,rgba(3,8,16,.76)); }
+.timeline-shot-empty { width: 100%; height: 100%; display: grid; place-items: center; color: rgba(159,179,209,.42); }
+.timeline-shot-index,.timeline-shot-duration { position: absolute; z-index: 1; bottom: 3px; font-size: 6.5px; color: #fff; }
+.timeline-shot-index { left: 4px; font-family: var(--font-mono); font-weight: 800; }
+.timeline-shot-duration { right: 4px; }
+.delivery-inspector { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.delivery-score-card,.delivery-panel { border: 1px solid rgba(28,48,82,.09); border-radius: 18px; background: rgba(255,255,255,.86); box-shadow: 0 10px 28px rgba(25,49,89,.06); }
+.delivery-score-card { display: grid; grid-template-columns: 62px minmax(0,1fr); align-items: center; gap: 12px; padding: 13px; }
+.delivery-score-ring { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 50%; background: conic-gradient(#4b7df1 var(--score),#e8edf5 0); position: relative; }
+.delivery-score-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+.delivery-score-ring > div { position: relative; z-index: 1; display: flex; align-items: baseline; }
+.delivery-score-ring strong { font-size: 16px; color: #1d3156; }
+.delivery-score-ring span { font-size: 7px; color: var(--text-3); }
+.delivery-score-card > div:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.delivery-score-card > div:last-child > span { font-size: 8px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.delivery-score-card > div:last-child > strong { font-size: 13px; color: var(--text-0); }
+.delivery-score-card > div:last-child > small { font-size: 8px; line-height: 1.4; color: var(--text-3); }
+.delivery-panel { padding: 12px; }
+.delivery-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(27,43,72,.07); }
+.delivery-panel-head strong { font-size: 10px; color: var(--text-1); }
+.delivery-panel-head span { font-size: 8px; color: var(--text-3); font-family: var(--font-mono); }
+.delivery-check-list { display: flex; flex-direction: column; padding-top: 3px; }
+.delivery-check { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 7px; padding: 7px 0; }
+.delivery-check + .delivery-check { border-top: 1px dashed rgba(27,43,72,.07); }
+.delivery-check-icon { width: 19px; height: 19px; display: grid; place-items: center; border-radius: 6px; background: #f0f3f8; color: #a5b0c1; }
+.delivery-check-icon > span { width: 5px; height: 5px; border-radius: 50%; background: #b7c0cf; }
+.delivery-check.done .delivery-check-icon { color: #fff; background: #48a481; }
+.delivery-check > div { display: flex; flex-direction: column; gap: 1px; }
+.delivery-check strong { font-size: 9px; color: var(--text-2); }
+.delivery-check small { font-size: 7.5px; color: var(--text-3); }
+.delivery-specs dl { display: flex; flex-direction: column; margin: 4px 0 0; }
+.delivery-specs dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.delivery-specs dl > div + div { border-top: 1px dashed rgba(27,43,72,.07); }
+.delivery-specs dt { font-size: 8px; color: var(--text-3); }
+.delivery-specs dd { margin: 0; font-size: 8px; font-family: var(--font-mono); color: var(--text-1); }
+.delivery-download { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 10px; border: 0; border-radius: 15px; color: #fff; text-decoration: none; text-align: left; cursor: pointer; background: linear-gradient(135deg,#315fd3,#4d82f5); box-shadow: 0 11px 25px rgba(50,99,218,.23); }
+.delivery-download > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.13); }
+.delivery-download > div { display: flex; flex-direction: column; gap: 1px; }
+.delivery-download strong { font-size: 10px; }
+.delivery-download small { font-size: 7px; color: rgba(228,237,255,.72); }
+.delivery-download.is-disabled { background: linear-gradient(135deg,#43536f,#596a85); box-shadow: none; }
+.delivery-download:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Shared */
 .dim { color: var(--text-3); }
 
-@media (max-width: 1240px) {
+@media (max-width: 1100px) {
   .studio-body {
     grid-template-columns: 1fr;
   }

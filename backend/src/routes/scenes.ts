@@ -46,6 +46,7 @@ app.post('/:id/generate-image', async (c) => {
   if (!body.episode_id) return badRequest(c, 'episode_id is required')
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
+  if (ep.dramaId !== scene.dramaId) return badRequest(c, 'Scene and episode must belong to the same project')
 
   const prompt = scene.prompt || `${scene.location}, ${scene.time || ''}, 高质量场景, 电影感`
   try {

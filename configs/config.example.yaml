@@ -1,14 +1,14 @@
 app:
   name: "LingDrama API"
   version: "1.0.0"
-  debug: true
+  debug: false
   language: "zh" # 系统语言：zh(中文) 或 en(英文)
 
 server:
-  port: 5678
-  host: "0.0.0.0"
+  port: 5679
+  host: "127.0.0.1"
   cors_origins:
-    - "http://localhost:3012"
+    - "http://localhost:3013"
   read_timeout: 600
   write_timeout: 600
 
@@ -20,10 +20,10 @@ database:
 
 storage:
   type: "local"
-  local_path: "./data/storage"
-  base_url: "http://localhost:5678/static"
+  local_path: "./data/static"
+  base_url: "http://127.0.0.1:5679/static"
 
 ai:
   default_text_provider: "openai"
   default_image_provider: "openai"
-  default_video_provider: "doubao"
+  default_video_provider: "openai"

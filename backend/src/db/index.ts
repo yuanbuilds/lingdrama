@@ -17,6 +17,9 @@ sqlite.pragma('busy_timeout = 30000')
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS dramas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER,
+    created_by INTEGER,
+    is_public INTEGER NOT NULL DEFAULT 0,
     title TEXT NOT NULL,
     description TEXT,
     genre TEXT,
@@ -342,6 +345,117 @@ sqlite.exec(`
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS organizations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    region TEXT NOT NULL,
+    city TEXT,
+    locale TEXT NOT NULL DEFAULT 'en-US',
+    timezone TEXT NOT NULL DEFAULT 'UTC',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    title TEXT,
+    locale TEXT NOT NULL DEFAULT 'en-US',
+    city TEXT,
+    country TEXT,
+    avatar_url TEXT,
+    is_platform_admin INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    last_login_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS organization_memberships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TEXT NOT NULL,
+    UNIQUE (organization_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    region TEXT NOT NULL,
+    city TEXT,
+    locale TEXT NOT NULL DEFAULT 'en-US',
+    timezone TEXT NOT NULL DEFAULT 'UTC',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS workspace_memberships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TEXT NOT NULL,
+    UNIQUE (workspace_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    active_workspace_id INTEGER,
+    user_agent TEXT,
+    ip_hash TEXT,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    drama_id INTEGER,
+    episode_id INTEGER,
+    agent_type TEXT NOT NULL,
+    provider TEXT,
+    model TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    prompt_summary TEXT,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
+    latency_ms INTEGER,
+    error_code TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS media_objects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    path TEXT NOT NULL UNIQUE,
+    mime_type TEXT,
+    size_bytes INTEGER,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workspace_memberships_user ON workspace_memberships (user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions (token_hash);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
+  CREATE INDEX IF NOT EXISTS idx_ai_activity_workspace_created ON ai_activity_logs (workspace_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_media_objects_workspace_path ON media_objects (workspace_id, path);
 `)
 
 function ensureColumn(table: string, column: string, definition: string) {
@@ -358,6 +472,42 @@ function ensureColumn(table: string, column: string, definition: string) {
 ensureColumn('episodes', 'image_config_id', 'INTEGER')
 ensureColumn('episodes', 'video_config_id', 'INTEGER')
 ensureColumn('episodes', 'audio_config_id', 'INTEGER')
+ensureColumn('dramas', 'workspace_id', 'INTEGER')
+ensureColumn('dramas', 'created_by', 'INTEGER')
+ensureColumn('dramas', 'is_public', 'INTEGER NOT NULL DEFAULT 0')
+
+// Existing Huobao databases predate workspace tenancy. Create this index only
+// after the compatibility migration above has added the column.
+sqlite.exec('CREATE INDEX IF NOT EXISTS idx_dramas_workspace_id ON dramas (workspace_id)')
+
+// Keep model credentials outside the database. Existing file:/env: references
+// are preserved while the default text model moves to DeepSeek.
+sqlite.prepare(`
+  UPDATE ai_service_configs
+  SET model = ?, updated_at = ?
+  WHERE service_type = 'text'
+    AND (name LIKE '91model%' OR base_url LIKE '%91model.com%')
+    AND (model IS NULL OR model = '' OR model LIKE '%doubao%')
+`).run(JSON.stringify(['deepseek-v4-pro']), new Date().toISOString())
+
+sqlite.prepare(`
+  UPDATE agent_configs
+  SET model = ?, updated_at = ?
+  WHERE deleted_at IS NULL
+    AND (model IS NULL OR model = '' OR model LIKE '%doubao%')
+`).run('deepseek-v4-pro', new Date().toISOString())
+
+// Session rows are authentication material. Remove expired rows on every
+// process start and retain revoked rows only briefly for operational audit.
+const sessionCleanupNow = new Date()
+sqlite.prepare(`
+  DELETE FROM sessions
+  WHERE expires_at <= ?
+     OR (revoked_at IS NOT NULL AND revoked_at <= ?)
+`).run(
+  sessionCleanupNow.toISOString(),
+  new Date(sessionCleanupNow.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+)
 
 export const db = drizzle(sqlite, { schema })
 export { schema }

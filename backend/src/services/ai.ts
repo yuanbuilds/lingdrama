@@ -5,6 +5,7 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { logTaskProgress, logTaskWarn } from '../utils/task-logger.js'
 import { joinProviderUrl } from './adapters/url.js'
+import { resolveSecret } from './secrets.js'
 
 export type ServiceType = 'text' | 'image' | 'video' | 'audio'
 
@@ -57,7 +58,7 @@ export function getActiveConfig(serviceType: ServiceType): AIConfig | null {
   return {
     provider: active.provider || '',
     baseUrl: active.baseUrl,
-    apiKey: active.apiKey,
+    apiKey: resolveSecret(active.apiKey),
     model: models[0] || '',
   }
 }
@@ -99,7 +100,7 @@ export function getConfigById(id: number): AIConfig | null {
   return {
     provider: row.provider || '',
     baseUrl: row.baseUrl,
-    apiKey: row.apiKey,
+    apiKey: resolveSecret(row.apiKey),
     model: models[0] || '',
   }
 }

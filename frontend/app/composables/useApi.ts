@@ -1,30 +1,40 @@
 import { getLingLocale, translateText } from '~/utils/lingI18n'
 
 const BASE = '/api/v1'
+const DEBUG_API = import.meta.dev
 
 async function req<T = any>(method: string, path: string, body?: any): Promise<T> {
-  const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' } }
+  const opts: RequestInit = {
+    method,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+  }
   if (body) opts.body = JSON.stringify(body)
 
   const start = performance.now()
-  console.log(`%c[API] %c${method} %c${path}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc', body || '')
+  if (DEBUG_API) console.log(`%c[API] %c${method} %c${path}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc')
 
   try {
     const resp = await fetch(`${BASE}${path}`, opts)
-    const json = await resp.json()
+    const contentType = resp.headers.get('content-type') || ''
+    const json = resp.status === 204
+      ? {}
+      : contentType.includes('application/json')
+        ? await resp.json()
+        : { message: await resp.text() }
     const ms = Math.round(performance.now() - start)
 
     if (!resp.ok || (json.code && json.code >= 400)) {
-      console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', json.message || '')
+      if (DEBUG_API) console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', json.message || '')
       throw new Error(translateText(json.message || `${resp.status}`, getLingLocale()))
     }
 
-    console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#66bb6a', 'color:#66bb6a;font-weight:bold', 'color:#888')
+    if (DEBUG_API) console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#66bb6a', 'color:#66bb6a;font-weight:bold', 'color:#888')
     return json.data ?? json
   } catch (err: any) {
     if (!err.message?.match(/^\d{3}$/)) {
       const ms = Math.round(performance.now() - start)
-      console.log(`%c[API] %c${method} ${path} %cERROR %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', err.message)
+      if (DEBUG_API) console.log(`%c[API] %c${method} ${path} %cERROR %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', err.message)
     }
     throw err
   }
@@ -35,6 +45,17 @@ export const api = {
   post: <T = any>(p: string, b?: any) => req<T>('POST', p, b),
   put: <T = any>(p: string, b?: any) => req<T>('PUT', p, b),
   del: <T = any>(p: string) => req<T>('DELETE', p),
+}
+
+export const authAPI = {
+  login: (credentials: { account: string; password: string; remember?: boolean }) => api.post('/auth/login', credentials),
+  logout: () => api.post('/auth/logout', {}),
+  me: () => api.get('/auth/me'),
+  session: () => api.get('/auth/session'),
+  workspaces: () => api.get('/workspaces'),
+  usage: () => api.get('/usage/summary'),
+  activity: () => api.get('/usage/activity'),
+  switchWorkspace: (workspaceId: string | number) => api.post('/auth/switch-workspace', { workspace_id: workspaceId }),
 }
 
 export const dramaAPI = {
@@ -90,6 +111,12 @@ export const gridAPI = {
 export const videoAPI = {
   generate: (d: any) => api.post('/videos', d),
   get: (id: number) => api.get(`/videos/${id}`),
+  list: (params?: { drama_id?: number; storyboard_id?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.drama_id) query.set('drama_id', String(params.drama_id))
+    if (params?.storyboard_id) query.set('storyboard_id', String(params.storyboard_id))
+    return api.get(`/videos${query.size ? `?${query.toString()}` : ''}`)
+  },
 }
 export const composeAPI = {
   shot: (id: number) => api.post(`/compose/storyboards/${id}/compose`),

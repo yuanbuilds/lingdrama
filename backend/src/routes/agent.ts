@@ -5,6 +5,11 @@ import { Hono } from 'hono'
 import { createAgent, validAgentTypes } from '../agents/index.js'
 import { success, badRequest } from '../utils/response.js'
 import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { db, schema } from '../db/index.js'
+import { eq, isNull, and } from 'drizzle-orm'
+import { getAuth } from '../security/auth.js'
+import { getTextConfig } from '../services/ai.js'
+import { now } from '../utils/response.js'
 
 const app = new Hono()
 
@@ -44,6 +49,27 @@ app.post('/:type/chat', async (c) => {
     return badRequest(c, 'drama_id and episode_id are required')
   }
 
+  const auth = getAuth(c)
+  const textConfig = getTextConfig()
+  const agentConfig = db.select().from(schema.agentConfigs).where(and(
+    eq(schema.agentConfigs.agentType, agentType),
+    isNull(schema.agentConfigs.deletedAt),
+  )).get()
+  const model = agentConfig?.model || textConfig.model
+  const activityResult = db.insert(schema.aiActivityLogs).values({
+    workspaceId: auth.workspace.id,
+    userId: auth.user.id,
+    dramaId: Number(drama_id),
+    episodeId: Number(episode_id),
+    agentType,
+    provider: textConfig.provider,
+    model,
+    status: 'running',
+    promptSummary: String(message || '').replace(/\s+/g, ' ').trim().slice(0, 240),
+    createdAt: now(),
+  }).run()
+  const activityId = Number(activityResult.lastInsertRowid)
+
   const agent = createAgent(agentType, episode_id, drama_id)
   if (!agent) {
     logTaskError('Agent', agentType, { reason: 'agent not found' })
@@ -80,6 +106,19 @@ app.post('/:type/chat', async (c) => {
     })
     logTaskPayload('Agent', `${agentType} tool-results`, normalizedToolResults)
 
+    const usage = (result as any).usage || {}
+    const inputTokens = Number(usage.inputTokens ?? usage.promptTokens ?? 0) || 0
+    const outputTokens = Number(usage.outputTokens ?? usage.completionTokens ?? 0) || 0
+    const totalTokens = Number(usage.totalTokens ?? inputTokens + outputTokens) || 0
+    db.update(schema.aiActivityLogs).set({
+      status: 'completed',
+      inputTokens,
+      outputTokens,
+      totalTokens,
+      latencyMs: Math.round(Number(elapsed) * 1000),
+      completedAt: now(),
+    }).where(eq(schema.aiActivityLogs.id, activityId)).run()
+
     return success(c, {
       type: 'done',
       text: result.text || '',
@@ -90,12 +129,19 @@ app.post('/:type/chat', async (c) => {
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
     logTaskError('Agent', agentType, { elapsedSeconds: elapsed, error: err.message })
     console.error(err.stack || err)
+    db.update(schema.aiActivityLogs).set({
+      status: 'failed',
+      latencyMs: Math.round(Number(elapsed) * 1000),
+      errorCode: String(err?.name || 'agent_error').slice(0, 80),
+      completedAt: now(),
+    }).where(eq(schema.aiActivityLogs.id, activityId)).run()
     return badRequest(c, err.message || 'Agent execution failed')
   }
 })
 
 // GET /agent/:type/debug
 app.get('/:type/debug', async (c) => {
+  if (process.env.NODE_ENV === 'production') return c.notFound()
   const agentType = c.req.param('type')
   if (!validAgentTypes.includes(agentType)) return badRequest(c, 'Invalid agent type')
   return success(c, { agent_type: agentType, valid: true })

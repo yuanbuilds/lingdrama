@@ -16,9 +16,7 @@ export async function splitGridImage(
   rows: number,
   cols: number,
 ): Promise<SplitResult[]> {
-  const absPath = imagePath.startsWith('/')
-    ? imagePath
-    : getAbsolutePath(imagePath)
+  const absPath = getAbsolutePath(imagePath)
 
   const image = sharp(absPath)
   const meta = await image.metadata()

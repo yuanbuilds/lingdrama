@@ -1,10 +1,60 @@
 import { Hono } from 'hono'
-import { eq, isNull, like, desc } from 'drizzle-orm'
+import { and, eq, isNull, desc } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, badRequest, notFound, created, now } from '../utils/response.js'
 import { toSnakeCase, toSnakeCaseArray } from '../utils/transform.js'
+import { getAuth, getAuthOrNull } from '../security/auth.js'
+import {
+  publicCharacterRecord,
+  publicDramaRecord,
+  publicEpisodeRecord,
+  publicPropRecord,
+  publicSceneRecord,
+  publicStoryboardRecord,
+} from '../security/public-production.js'
 
 const app = new Hono()
+
+const IMMUTABLE_NESTED_FIELDS = new Set([
+  'dramaId', 'drama_id', 'createdAt', 'created_at', 'updatedAt', 'updated_at',
+  'deletedAt', 'deleted_at', 'localPath', 'local_path',
+])
+
+function hasImmutableNestedField(value: Record<string, unknown>, allowId = false) {
+  return Object.keys(value).some(key => (!allowId && key === 'id') || IMMUTABLE_NESTED_FIELDS.has(key))
+}
+
+function characterValues(input: Record<string, any>) {
+  const values: Record<string, any> = {}
+  const fields = [
+    'name', 'role', 'description', 'appearance', 'personality', 'voiceStyle',
+    'seedValue', 'sortOrder', 'voiceProvider',
+  ]
+  for (const field of fields) {
+    const snake = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+    const value = field in input ? input[field] : input[snake]
+    if (value !== undefined) {
+      values[field] = field === 'referenceImages' && Array.isArray(value)
+        ? JSON.stringify(value)
+        : value
+    }
+  }
+  return values
+}
+
+function episodeValues(input: Record<string, any>) {
+  const values: Record<string, any> = {}
+  const fields = [
+    'episodeNumber', 'title', 'content', 'scriptContent', 'description', 'duration',
+    'status', 'imageConfigId', 'videoConfigId', 'audioConfigId',
+  ]
+  for (const field of fields) {
+    const snake = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+    const value = field in input ? input[field] : input[snake]
+    if (value !== undefined) values[field] = value
+  }
+  return values
+}
 
 // GET /dramas - List dramas
 app.get('/', async (c) => {
@@ -13,7 +63,10 @@ app.get('/', async (c) => {
   const status = c.req.query('status')
   const keyword = c.req.query('keyword')
 
-  let query = db.select().from(schema.dramas).where(isNull(schema.dramas.deletedAt))
+  const auth = getAuthOrNull(c)
+  let query = db.select().from(schema.dramas).where(auth
+    ? and(isNull(schema.dramas.deletedAt), eq(schema.dramas.workspaceId, auth.workspace.id))
+    : and(isNull(schema.dramas.deletedAt), eq(schema.dramas.isPublic, true)))
 
   const allRows = await query.orderBy(desc(schema.dramas.updatedAt))
   let filtered = allRows
@@ -27,18 +80,38 @@ app.get('/', async (c) => {
   // Attach episode/character/scene counts
   const enriched = await Promise.all(items.map(async (drama) => {
     const eps = await db.select().from(schema.episodes)
-      .where(eq(schema.episodes.dramaId, drama.id))
+      .where(and(eq(schema.episodes.dramaId, drama.id), isNull(schema.episodes.deletedAt)))
     const chars = await db.select().from(schema.characters)
-      .where(eq(schema.characters.dramaId, drama.id))
+      .where(and(eq(schema.characters.dramaId, drama.id), isNull(schema.characters.deletedAt)))
     const scns = await db.select().from(schema.scenes)
-      .where(eq(schema.scenes.dramaId, drama.id))
+      .where(and(eq(schema.scenes.dramaId, drama.id), isNull(schema.scenes.deletedAt)))
+    const episodeIds = new Set(eps.map(ep => ep.id))
+    const storyboards = db.select().from(schema.storyboards).all()
+      .filter(storyboard => episodeIds.has(storyboard.episodeId) && !storyboard.deletedAt)
+    const merges = db.select().from(schema.videoMerges).all()
+      .filter(merge => merge.dramaId === drama.id && !merge.deletedAt)
+    const latestMerge = merges.at(-1)
+    const previewStoryboard = [...storyboards].reverse().find(storyboard => (
+      storyboard.composedImage || storyboard.firstFrameImage || storyboard.lastFrameImage
+    ))
+    const previewVideoStoryboard = [...storyboards].reverse().find(storyboard => (
+      storyboard.composedVideoUrl || storyboard.videoUrl
+    ))
     return {
-      ...toSnakeCase(drama),
+      ...(auth ? toSnakeCase(drama) : publicDramaRecord(drama)),
       tags: drama.tags ? JSON.parse(drama.tags) : [],
       total_episodes: eps.length,
-      episodes: toSnakeCaseArray(eps),
-      characters: toSnakeCaseArray(chars),
-      scenes: toSnakeCaseArray(scns),
+      episodes: auth ? toSnakeCaseArray(eps) : eps.map(publicEpisodeRecord),
+      characters: auth ? toSnakeCaseArray(chars) : chars.map(publicCharacterRecord),
+      scenes: auth ? toSnakeCaseArray(scns) : scns.map(publicSceneRecord),
+      preview_image: drama.thumbnail || previewStoryboard?.composedImage || previewStoryboard?.firstFrameImage || previewStoryboard?.lastFrameImage || null,
+      preview_video: latestMerge?.mergedUrl || previewVideoStoryboard?.composedVideoUrl || previewVideoStoryboard?.videoUrl || null,
+      production_summary: {
+        shots: storyboards.length,
+        images_ready: storyboards.filter(storyboard => Boolean(storyboard.composedImage || storyboard.firstFrameImage)).length,
+        videos_ready: storyboards.filter(storyboard => Boolean(storyboard.composedVideoUrl || storyboard.videoUrl)).length,
+        final_ready: latestMerge?.status === 'completed',
+      },
     }
   }))
 
@@ -50,9 +123,12 @@ app.get('/', async (c) => {
 
 // POST /dramas - Create drama
 app.post('/', async (c) => {
+  const auth = getAuth(c)
   const body = await c.req.json()
   const ts = now()
   const res = db.insert(schema.dramas).values({
+    workspaceId: auth.workspace.id,
+    createdBy: auth.user.id,
     title: body.title,
     description: body.description,
     genre: body.genre,
@@ -86,7 +162,11 @@ app.post('/', async (c) => {
 
 // GET /dramas/stats — must be before /:id
 app.get('/stats', async (c) => {
-  const all = db.select().from(schema.dramas).where(isNull(schema.dramas.deletedAt)).all()
+  const auth = getAuth(c)
+  const all = db.select().from(schema.dramas).where(and(
+    isNull(schema.dramas.deletedAt),
+    eq(schema.dramas.workspaceId, auth.workspace.id),
+  )).all()
   const byStatus = Object.entries(
     all.reduce((acc, d) => {
       acc[d.status || 'draft'] = (acc[d.status || 'draft'] || 0) + 1
@@ -99,25 +179,47 @@ app.get('/stats', async (c) => {
 // GET /dramas/:id - Get drama detail
 app.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  const auth = getAuthOrNull(c)
   const [drama] = await db.select().from(schema.dramas).where(eq(schema.dramas.id, id))
   if (!drama) return notFound(c, '剧本不存在')
 
   const eps = await db.select().from(schema.episodes)
-    .where(eq(schema.episodes.dramaId, id))
+    .where(and(eq(schema.episodes.dramaId, id), isNull(schema.episodes.deletedAt)))
   const chars = await db.select().from(schema.characters)
-    .where(eq(schema.characters.dramaId, id))
+    .where(and(eq(schema.characters.dramaId, id), isNull(schema.characters.deletedAt)))
   const scns = await db.select().from(schema.scenes)
-    .where(eq(schema.scenes.dramaId, id))
+    .where(and(eq(schema.scenes.dramaId, id), isNull(schema.scenes.deletedAt)))
   const prps = await db.select().from(schema.props)
-    .where(eq(schema.props.dramaId, id))
+    .where(and(eq(schema.props.dramaId, id), isNull(schema.props.deletedAt)))
+  const episodeIds = new Set(eps.map(ep => ep.id))
+  const storyboards = db.select().from(schema.storyboards).all()
+    .filter(storyboard => episodeIds.has(storyboard.episodeId) && !storyboard.deletedAt)
+  const merges = db.select().from(schema.videoMerges).all()
+    .filter(merge => merge.dramaId === id && !merge.deletedAt)
+  const latestMerge = merges.at(-1)
+  const previewStoryboard = [...storyboards].reverse().find(storyboard => (
+    storyboard.composedImage || storyboard.firstFrameImage || storyboard.lastFrameImage
+  ))
+  const previewVideoStoryboard = [...storyboards].reverse().find(storyboard => (
+    storyboard.composedVideoUrl || storyboard.videoUrl
+  ))
 
   return success(c, {
-    ...toSnakeCase(drama),
+    ...(auth ? toSnakeCase(drama) : publicDramaRecord(drama)),
     tags: drama.tags ? JSON.parse(drama.tags) : [],
-    episodes: toSnakeCaseArray(eps),
-    characters: toSnakeCaseArray(chars),
-    scenes: toSnakeCaseArray(scns),
-    props: toSnakeCaseArray(prps),
+    episodes: auth ? toSnakeCaseArray(eps) : eps.map(publicEpisodeRecord),
+    characters: auth ? toSnakeCaseArray(chars) : chars.map(publicCharacterRecord),
+    scenes: auth ? toSnakeCaseArray(scns) : scns.map(publicSceneRecord),
+    props: auth ? toSnakeCaseArray(prps) : prps.map(publicPropRecord),
+    preview_image: drama.thumbnail || previewStoryboard?.composedImage || previewStoryboard?.firstFrameImage || previewStoryboard?.lastFrameImage || null,
+    preview_video: latestMerge?.mergedUrl || previewVideoStoryboard?.composedVideoUrl || previewVideoStoryboard?.videoUrl || null,
+    storyboards: auth ? toSnakeCaseArray(storyboards) : storyboards.map(publicStoryboardRecord),
+    production_summary: {
+      shots: storyboards.length,
+      images_ready: storyboards.filter(storyboard => Boolean(storyboard.composedImage || storyboard.firstFrameImage)).length,
+      videos_ready: storyboards.filter(storyboard => Boolean(storyboard.composedVideoUrl || storyboard.videoUrl)).length,
+      final_ready: latestMerge?.status === 'completed',
+    },
   })
 })
 
@@ -140,7 +242,7 @@ app.put('/:id', async (c) => {
 // DELETE /dramas/:id - Soft delete
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  await db.update(schema.dramas).set({ deletedAt: now() }).where(eq(schema.dramas.id, id))
+  db.update(schema.dramas).set({ deletedAt: now() }).where(eq(schema.dramas.id, id)).run()
   return success(c)
 })
 
@@ -152,10 +254,24 @@ app.put('/:id/characters', async (c) => {
   const ts = now()
 
   for (const char of chars) {
+    if (!char || typeof char !== 'object' || hasImmutableNestedField(char, Boolean(char.id))) {
+      return badRequest(c, 'Immutable character fields cannot be changed')
+    }
+    const values = characterValues(char)
     if (char.id) {
-      await db.update(schema.characters).set({ ...char, updatedAt: ts }).where(eq(schema.characters.id, char.id))
+      const existing = db.select().from(schema.characters).where(eq(schema.characters.id, char.id)).get()
+      if (!existing || existing.dramaId !== dramaId) return badRequest(c, 'Character does not belong to this project')
+      if (!Object.keys(values).length) return badRequest(c, 'No valid character fields')
+      db.update(schema.characters).set({ ...values, updatedAt: ts }).where(eq(schema.characters.id, char.id)).run()
     } else {
-      await db.insert(schema.characters).values({ ...char, dramaId, createdAt: ts, updatedAt: ts })
+      if (!values.name) return badRequest(c, 'Character name is required')
+      db.insert(schema.characters).values({
+        ...values,
+        name: values.name,
+        dramaId,
+        createdAt: ts,
+        updatedAt: ts,
+      } as typeof schema.characters.$inferInsert).run()
     }
   }
   return success(c)
@@ -169,17 +285,24 @@ app.put('/:id/episodes', async (c) => {
   const ts = now()
 
   for (const ep of episodes) {
+    if (!ep || typeof ep !== 'object' || hasImmutableNestedField(ep, Boolean(ep.id))) {
+      return badRequest(c, 'Immutable episode fields cannot be changed')
+    }
+    const values = episodeValues(ep)
     if (ep.id) {
-      await db.update(schema.episodes).set({ ...ep, updatedAt: ts }).where(eq(schema.episodes.id, ep.id))
+      const existing = db.select().from(schema.episodes).where(eq(schema.episodes.id, ep.id)).get()
+      if (!existing || existing.dramaId !== dramaId) return badRequest(c, 'Episode does not belong to this project')
+      if (!Object.keys(values).length) return badRequest(c, 'No valid episode fields')
+      db.update(schema.episodes).set({ ...values, updatedAt: ts }).where(eq(schema.episodes.id, ep.id)).run()
     } else {
-      await db.insert(schema.episodes).values({
-        ...ep,
+      db.insert(schema.episodes).values({
+        ...values,
         dramaId,
-        episodeNumber: ep.episode_number || ep.episodeNumber || 1,
-        title: ep.title || '未命名',
+        episodeNumber: values.episodeNumber || 1,
+        title: values.title || '未命名',
         createdAt: ts,
         updatedAt: ts,
-      })
+      } as typeof schema.episodes.$inferInsert).run()
     }
   }
   return success(c)
